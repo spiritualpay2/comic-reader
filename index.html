@@ -3,9 +3,9 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>📚 Comic Reader</title>
+    <title>Simple Comic Reader</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet" />
-    <!-- JSZip for backup -->
+    <!-- JSZip for backup & restore -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <style>
         /* ─── Reset & Base ─── */
@@ -682,6 +682,18 @@
             letter-spacing: -0.3px;
         }
 
+        .library-brand .storage-usage {
+            font-size: 13px;
+            font-weight: 400;
+            color: var(--text-muted);
+            margin-left: 12px;
+            background: var(--bg-surface);
+            padding: 4px 12px;
+            border-radius: 50px;
+            border: 1px solid var(--border-color);
+            white-space: nowrap;
+        }
+
         .library-actions {
             display: flex;
             align-items: center;
@@ -995,6 +1007,12 @@
                 font-size: 18px;
             }
 
+            .library-brand .storage-usage {
+                font-size: 11px;
+                padding: 3px 8px;
+                margin-left: 8px;
+            }
+
             .library-content {
                 padding: 20px 16px;
             }
@@ -1100,9 +1118,12 @@
             <div class="library-brand">
                 <span class="brand-icon">📚</span>
                 <h1>Comic Reader</h1>
+                <span class="storage-usage" id="storageUsage">0 MB stored</span>
             </div>
             <div class="library-actions">
                 <button class="btn btn-ghost" id="backupBtn">💾 Backup</button>
+                <button class="btn btn-ghost" id="restoreBtn">📥 Restore</button>
+                <input type="file" id="restoreInput" accept=".zip" style="display:none" />
                 <button class="btn btn-primary" id="addComicBtn">
                     <span>＋</span> Add Comic
                 </button>
@@ -1244,8 +1265,10 @@
             const pinTitle = document.getElementById('pinTitle');
             const pinDescription = document.getElementById('pinDescription');
             const pinMessage = document.getElementById('pinMessage');
-            // ─── Backup button ───
             const backupBtn = document.getElementById('backupBtn');
+            const restoreBtn = document.getElementById('restoreBtn');
+            const restoreInput = document.getElementById('restoreInput');
+            const storageUsage = document.getElementById('storageUsage');
 
             // ─── State ───
             let images = []; // Array of { name, file, url }
@@ -1399,6 +1422,49 @@
                 return URL.createObjectURL(blob);
             }
 
+            // ─── Storage usage ───
+            async function calculateTotalStorage() {
+                if (!db) return 0;
+                let total = 0;
+                const tx = db.transaction('pages', 'readonly');
+                const store = tx.objectStore('pages');
+                const request = store.openCursor();
+                return new Promise((resolve, reject) => {
+                    request.onsuccess = (e) => {
+                        const cursor = e.target.result;
+                        if (cursor) {
+                            const record = cursor.value;
+                            if (record.blob && record.blob.size) {
+                                total += record.blob.size;
+                            }
+                            cursor.continue();
+                        } else {
+                            resolve(total);
+                        }
+                    };
+                    request.onerror = () => reject(request.error);
+                });
+            }
+
+            function formatBytes(bytes) {
+                if (bytes === 0) return '0 B';
+                const units = ['B', 'KB', 'MB', 'GB'];
+                const i = Math.floor(Math.log(bytes) / Math.log(1024));
+                const val = (bytes / Math.pow(1024, i)).toFixed(1);
+                return val + ' ' + units[i];
+            }
+
+            async function updateStorageUsage() {
+                try {
+                    const total = await calculateTotalStorage();
+                    storageUsage.textContent = formatBytes(total) + ' stored';
+                } catch (error) {
+                    console.warn('Could not calculate storage usage:', error);
+                    storageUsage.textContent = '? stored';
+                }
+            }
+
+            // ─── Render library ───
             async function renderLibrary() {
                 libraryComics = await getAllComics();
                 const query = librarySearch.value.trim().toLowerCase();
@@ -1422,6 +1488,7 @@
                         heading.textContent = 'Your library is empty';
                         paragraph.textContent = 'Add a comic folder to build your personal library. Your comics are stored locally in this browser.';
                     }
+                    await updateStorageUsage();
                     return;
                 }
 
@@ -1455,6 +1522,7 @@
                             await deleteComicFromLibrary(comic.id);
                             showToast('Comic removed from library', 'success');
                             await renderLibrary();
+                            await updateStorageUsage();
                         } catch (error) {
                             console.error(error);
                             showError('Could not remove that comic.');
@@ -1492,6 +1560,7 @@
                         console.warn('Could not load library cover:', error);
                     }
                 }
+                await updateStorageUsage();
             }
 
             async function openComicFromLibrary(comicId) {
@@ -1539,6 +1608,7 @@
                 try {
                     await openLibraryDB();
                     await renderLibrary();
+                    await updateStorageUsage();
                 } catch (error) {
                     console.error('Library initialization failed:', error);
                     showError('Local library storage is unavailable in this browser.');
@@ -1850,6 +1920,7 @@
                 toggleThumbs.textContent = '▦';
 
                 showToast(`Loaded ${images.length} page${images.length > 1 ? 's' : ''}`, 'success');
+                await updateStorageUsage();
             }
 
             function openReaderUI(title, fromUpload) {
@@ -1898,6 +1969,7 @@
                 // Reset file input so the same folder can be uploaded again.
                 folderInput.value = '';
                 renderLibrary().catch(console.error);
+                updateStorageUsage().catch(console.error);
             }
 
             // ─── Toggle thumbnails ───
@@ -1980,6 +2052,7 @@
 
                 closeUploadModal();
                 await renderLibrary();
+                await updateStorageUsage();
                 showToast(`Added ${added} comic${added === 1 ? '' : 's'} to your library`, added ? 'success' : 'error');
             }
 
@@ -2073,6 +2146,120 @@
                     readEntries();
                 });
             }
+
+            // ─── Backup ───
+            backupBtn.addEventListener('click', async () => {
+                try {
+                    const comics = await getAllComics();
+                    if (comics.length === 0) {
+                        showToast('No comics to backup. Add some first!', 'error');
+                        return;
+                    }
+
+                    showToast('Preparing backup…', 'success');
+                    const zip = new JSZip();
+
+                    let totalPages = 0;
+                    for (const comic of comics) {
+                        const pages = await getPageRecords(comic.id);
+                        if (!pages.length) continue;
+                        const folder = zip.folder(comic.name);
+                        for (const page of pages) {
+                            // Use the original file name to preserve extension
+                            const fileName = page.name || `page_${page.index + 1}.jpg`;
+                            folder.file(fileName, page.blob);
+                            totalPages++;
+                        }
+                    }
+
+                    if (totalPages === 0) {
+                        showToast('No pages found to backup.', 'error');
+                        return;
+                    }
+
+                    showToast(`Zipping ${totalPages} pages…`, 'success');
+                    const zipBlob = await zip.generateAsync({ type: 'blob' });
+                    const url = URL.createObjectURL(zipBlob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `comic-library-backup-${new Date().toISOString().slice(0,10)}.zip`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    setTimeout(() => URL.revokeObjectURL(url), 5000);
+                    showToast(`Backup created with ${totalPages} pages.`, 'success');
+                } catch (error) {
+                    console.error('Backup failed:', error);
+                    showError('Backup failed. See console for details.');
+                }
+            });
+
+            // ─── Restore (with duplicate detection) ───
+            restoreBtn.addEventListener('click', () => {
+                restoreInput.click();
+            });
+
+            restoreInput.addEventListener('change', async (e) => {
+                if (!e.target.files || e.target.files.length === 0) return;
+                const file = e.target.files[0];
+                restoreInput.value = ''; // reset
+
+                try {
+                    showToast('Reading backup…', 'success');
+                    const zip = await JSZip.loadAsync(file);
+                    const folders = {}; // folderName -> [{name, blob}]
+
+                    const entries = Object.keys(zip.files);
+                    for (const path of entries) {
+                        const entry = zip.files[path];
+                        if (entry.dir) continue;
+                        const parts = path.split('/');
+                        if (parts.length < 2) continue;
+                        const folderName = parts[0];
+                        const baseName = parts[parts.length - 1];
+                        if (!folders[folderName]) folders[folderName] = [];
+                        const blob = await entry.async('blob');
+                        folders[folderName].push({ name: baseName, file: blob });
+                    }
+
+                    // Get existing comic names from library (case-insensitive)
+                    const existingComics = await getAllComics();
+                    const existingNames = new Set(existingComics.map(c => c.name.toLowerCase()));
+
+                    // Filter out folders that already exist
+                    const newFolders = {};
+                    for (const [folderName, files] of Object.entries(folders)) {
+                        if (!existingNames.has(folderName.toLowerCase())) {
+                            newFolders[folderName] = files;
+                        }
+                    }
+
+                    const newCount = Object.keys(newFolders).length;
+                    if (newCount === 0) {
+                        showToast('No new comics to restore (all already in library).', 'success');
+                        return;
+                    }
+
+                    let added = 0;
+                    for (const [folderName, files] of Object.entries(newFolders)) {
+                        files.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
+                        const filtered = files.map(f => ({ name: f.name, file: f.file, url: null }));
+                        try {
+                            await saveComicToLibrary(filtered, folderName);
+                            added++;
+                        } catch (err) {
+                            console.error(`Failed to restore comic ${folderName}:`, err);
+                        }
+                    }
+
+                    await renderLibrary();
+                    await updateStorageUsage();
+                    showToast(`Restored ${added} new comic${added !== 1 ? 's' : ''} from backup.`, 'success');
+                } catch (err) {
+                    console.error('Restore failed:', err);
+                    showError('Failed to restore backup. Ensure it\'s a valid comic backup zip.');
+                }
+            });
 
             // ─── Keyboard shortcuts ───
             document.addEventListener('keydown', (e) => {
@@ -2227,53 +2414,6 @@
                 showToast('📖 Add a folder of JPG, PNG, or WebP images. Your comics are stored locally in this browser.', 'success');
             });
 
-            // ─── Backup functionality ───
-            backupBtn.addEventListener('click', async () => {
-                try {
-                    const comics = await getAllComics();
-                    if (comics.length === 0) {
-                        showToast('No comics to backup. Add some first!', 'error');
-                        return;
-                    }
-
-                    showToast('Preparing backup…', 'success');
-                    const zip = new JSZip();
-
-                    let totalPages = 0;
-                    for (const comic of comics) {
-                        const pages = await getPageRecords(comic.id);
-                        if (!pages.length) continue;
-                        const folder = zip.folder(comic.name);
-                        for (const page of pages) {
-                            // Use the original file name to preserve extension
-                            const fileName = page.name || `page_${page.index + 1}.jpg`;
-                            folder.file(fileName, page.blob);
-                            totalPages++;
-                        }
-                    }
-
-                    if (totalPages === 0) {
-                        showToast('No pages found to backup.', 'error');
-                        return;
-                    }
-
-                    showToast(`Zipping ${totalPages} pages…`, 'success');
-                    const zipBlob = await zip.generateAsync({ type: 'blob' });
-                    const url = URL.createObjectURL(zipBlob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = `comic-library-backup-${new Date().toISOString().slice(0,10)}.zip`;
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    setTimeout(() => URL.revokeObjectURL(url), 5000);
-                    showToast(`Backup created with ${totalPages} pages.`, 'success');
-                } catch (error) {
-                    console.error('Backup failed:', error);
-                    showError('Backup failed. See console for details.');
-                }
-            });
-
             // ─── Handle window resize ───
             let resizeTimer;
             window.addEventListener('resize', () => {
@@ -2313,7 +2453,7 @@
                 });
                 initLibrary();
             })();
-            console.log('📚 Comic Reader loaded. Your library is stored locally in this browser.');
+            console.log('Simple Comic Reader loaded. Your library is stored locally in this browser.');
 
         })();
     </script>
