@@ -253,6 +253,13 @@
             transform: translateY(0px) scale(0.97);
         }
 
+        .btn:disabled {
+            opacity: .5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
         .btn-primary {
             background: var(--accent);
             color: #0b0b0b;
@@ -263,6 +270,26 @@
             border-color: var(--accent-hover);
             box-shadow: 0 8px 32px rgba(46, 204, 113, 0.3);
         }
+
+        .btn-danger {
+            background: rgba(231, 76, 60, 0.10);
+            color: #ff8f83;
+            border-color: rgba(231, 76, 60, 0.42);
+        }
+
+        .btn-danger:hover {
+            background: rgba(231, 76, 60, 0.18);
+            border-color: rgba(231, 76, 60, 0.65);
+            box-shadow: 0 8px 28px rgba(231, 76, 60, 0.16);
+        }
+
+        .btn:disabled {
+            opacity: 0.48;
+            cursor: not-allowed;
+            transform: none !important;
+            box-shadow: none !important;
+        }
+
 
         .btn-ghost {
             background: transparent;
@@ -643,6 +670,115 @@
             color: var(--accent);
         }
 
+        /* ─── Purge Confirmation ─── */
+        .purge-confirm {
+            position: fixed;
+            inset: 0;
+            z-index: 12000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            background: rgba(0, 0, 0, 0.78);
+            backdrop-filter: blur(9px);
+            -webkit-backdrop-filter: blur(9px);
+        }
+        .purge-confirm.hidden { display: none; }
+        .purge-confirm-card {
+            width: min(100%, 430px);
+            padding: 32px;
+            text-align: center;
+            background: var(--bg-primary);
+            border: 1px solid rgba(231, 76, 60, 0.38);
+            border-radius: 18px;
+            box-shadow: 0 20px 70px rgba(0,0,0,.65);
+        }
+        .purge-confirm-icon {
+            width: 62px;
+            height: 62px;
+            margin: 0 auto 18px;
+            display: grid;
+            place-items: center;
+            border-radius: 50%;
+            background: rgba(231,76,60,.13);
+            font-size: 28px;
+        }
+        .purge-confirm-card h2 { margin-bottom: 10px; font-size: 23px; }
+        .purge-confirm-card p {
+            color: var(--text-secondary);
+            font-size: 14px;
+            line-height: 1.55;
+            margin-bottom: 20px;
+        }
+        .purge-button {
+            background: #e74c3c;
+            color: #fff;
+        }
+        .purge-button:hover { background: #ef6254; }
+        .purge-cancel {
+            width: 100%;
+            margin-top: 10px;
+            justify-content: center;
+        }
+
+        /* ─── Backup / Restore Progress ─── */
+        .transfer-progress {
+            position: fixed;
+            left: 50%;
+            bottom: 30px;
+            transform: translateX(-50%);
+            width: min(520px, calc(100vw - 32px));
+            padding: 16px 18px;
+            background: rgba(20, 20, 20, 0.96);
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            box-shadow: 0 14px 40px rgba(0,0,0,.55);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            z-index: 500;
+        }
+        .transfer-progress.hidden { display: none; }
+        .transfer-progress-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 9px;
+        }
+        .transfer-progress-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+        .transfer-progress-percent {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--accent);
+            white-space: nowrap;
+        }
+        .transfer-progress-status {
+            min-height: 18px;
+            margin-bottom: 10px;
+            color: var(--text-secondary);
+            font-size: 12px;
+            line-height: 1.4;
+        }
+        .transfer-progress-track {
+            width: 100%;
+            height: 8px;
+            overflow: hidden;
+            border-radius: 999px;
+            background: var(--bg-surface);
+            border: 1px solid var(--border-color);
+        }
+        .transfer-progress-bar {
+            width: 0%;
+            height: 100%;
+            border-radius: inherit;
+            background: var(--accent);
+            transition: width .12s linear;
+        }
+
 
         /* ─── Library View ─── */
         #libraryView {
@@ -698,6 +834,8 @@
             display: flex;
             align-items: center;
             gap: 10px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
         }
 
         .library-content {
@@ -1110,7 +1248,33 @@
         </div>
     </div>
 
+    <!-- ─── PURGE CONFIRMATION ─── -->
+    <div id="purgeConfirm" class="purge-confirm hidden" role="dialog" aria-modal="true" aria-labelledby="purgeConfirmTitle">
+        <div class="purge-confirm-card">
+            <div class="purge-confirm-icon">⚠️</div>
+            <h2 id="purgeConfirmTitle">Purge Entire Library?</h2>
+            <p>This permanently deletes every comic and page stored in this browser. To confirm, re-enter your 6-digit PIN.</p>
+            <form id="purgeForm" autocomplete="off">
+                <input class="pin-input" id="purgePinInput" type="password" inputmode="numeric" pattern="[0-9]{6}" maxlength="6" minlength="6" autocomplete="off" aria-label="6-digit PIN for purge confirmation" />
+                <button class="pin-button purge-button" id="purgeSubmit" type="submit">Delete Everything</button>
+                <button class="btn btn-ghost purge-cancel" id="purgeCancel" type="button">Cancel</button>
+                <div class="pin-message" id="purgeMessage" aria-live="polite"></div>
+            </form>
+        </div>
+    </div>
+
     <div id="toast" class="toast"></div>
+
+    <div id="transferProgress" class="transfer-progress hidden" aria-live="polite" aria-atomic="true">
+        <div class="transfer-progress-head">
+            <div class="transfer-progress-title" id="transferProgressTitle">Preparing…</div>
+            <div class="transfer-progress-percent" id="transferProgressPercent">0%</div>
+        </div>
+        <div class="transfer-progress-status" id="transferProgressStatus">Please keep this tab open while the transfer finishes.</div>
+        <div class="transfer-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <div class="transfer-progress-bar" id="transferProgressBar"></div>
+        </div>
+    </div>
 
     <!-- ─── LIBRARY VIEW ─── -->
     <div id="libraryView">
@@ -1123,6 +1287,7 @@
             <div class="library-actions">
                 <button class="btn btn-ghost" id="backupBtn">💾 Backup</button>
                 <button class="btn btn-ghost" id="restoreBtn">📥 Restore</button>
+                <button class="btn btn-danger" id="purgeBtn">🗑️ Purge</button>
                 <input type="file" id="restoreInput" accept=".zip" style="display:none" />
                 <button class="btn btn-primary" id="addComicBtn">
                     <span>＋</span> Add Comic
@@ -1267,8 +1432,21 @@
             const pinMessage = document.getElementById('pinMessage');
             const backupBtn = document.getElementById('backupBtn');
             const restoreBtn = document.getElementById('restoreBtn');
+            const purgeBtn = document.getElementById('purgeBtn');
+            const purgeConfirm = document.getElementById('purgeConfirm');
+            const purgeForm = document.getElementById('purgeForm');
+            const purgePinInput = document.getElementById('purgePinInput');
+            const purgeSubmit = document.getElementById('purgeSubmit');
+            const purgeCancel = document.getElementById('purgeCancel');
+            const purgeMessage = document.getElementById('purgeMessage');
             const restoreInput = document.getElementById('restoreInput');
             const storageUsage = document.getElementById('storageUsage');
+            const transferProgress = document.getElementById('transferProgress');
+            const transferProgressTitle = document.getElementById('transferProgressTitle');
+            const transferProgressPercent = document.getElementById('transferProgressPercent');
+            const transferProgressStatus = document.getElementById('transferProgressStatus');
+            const transferProgressBar = document.getElementById('transferProgressBar');
+            const transferProgressTrack = transferProgress.querySelector('[role="progressbar"]');
 
             // ─── State ───
             let images = []; // Array of { name, file, url }
@@ -1281,6 +1459,7 @@
             let isLoading = false;
             let imageLoadToken = 0;
             let toastTimeout = null;
+            let cachedStorageBytes = null;
 
             // ─── Local library (IndexedDB) ───
             const DB_NAME = 'comic-reader-library';
@@ -1403,18 +1582,32 @@
                     const pageStore = tx.objectStore('pages');
                     const index = pageStore.index('comicId');
                     const request = index.openCursor(IDBKeyRange.only(comicId));
+                    let deletedBytes = 0;
 
                     request.onsuccess = event => {
                         const cursor = event.target.result;
                         if (cursor) {
+                            const record = cursor.value;
+                            if (record.blob && record.blob.size) deletedBytes += record.blob.size;
                             cursor.delete();
                             cursor.continue();
                         }
                     };
 
-                    tx.oncomplete = resolve;
+                    tx.oncomplete = () => resolve(deletedBytes);
                     tx.onerror = () => reject(tx.error);
                     tx.onabort = () => reject(tx.error || new Error('Delete was aborted.'));
+                });
+            }
+
+            async function purgeEntireLibrary() {
+                return new Promise((resolve, reject) => {
+                    const tx = db.transaction(['comics', 'pages'], 'readwrite');
+                    tx.objectStore('comics').clear();
+                    tx.objectStore('pages').clear();
+                    tx.oncomplete = resolve;
+                    tx.onerror = () => reject(tx.error);
+                    tx.onabort = () => reject(tx.error || new Error('Purge was aborted.'));
                 });
             }
 
@@ -1457,6 +1650,7 @@
             async function updateStorageUsage() {
                 try {
                     const total = await calculateTotalStorage();
+                    cachedStorageBytes = total;
                     storageUsage.textContent = formatBytes(total) + ' stored';
                 } catch (error) {
                     console.warn('Could not calculate storage usage:', error);
@@ -1464,8 +1658,13 @@
                 }
             }
 
+            function setCachedStorageUsage(bytes) {
+                cachedStorageBytes = Math.max(0, Number(bytes) || 0);
+                storageUsage.textContent = formatBytes(cachedStorageBytes) + ' stored';
+            }
+
             // ─── Render library ───
-            async function renderLibrary() {
+            async function renderLibrary(updateStorage = true) {
                 libraryComics = await getAllComics();
                 const query = librarySearch.value.trim().toLowerCase();
                 const visible = query
@@ -1488,7 +1687,7 @@
                         heading.textContent = 'Your library is empty';
                         paragraph.textContent = 'Add a comic folder to build your personal library. Your comics are stored locally in this browser.';
                     }
-                    await updateStorageUsage();
+                    if (updateStorage) await updateStorageUsage();
                     return;
                 }
 
@@ -1519,10 +1718,31 @@
                         event.stopPropagation();
                         if (!confirm(`Remove “${comic.name}” from your library?`)) return;
                         try {
-                            await deleteComicFromLibrary(comic.id);
+                            const deletedBytes = await deleteComicFromLibrary(comic.id);
+                            if (cachedStorageBytes !== null) setCachedStorageUsage(cachedStorageBytes - deletedBytes);
+
+                            // Remove only this card instead of rebuilding the entire library UI.
+                            // This makes repeated deletions much faster for large libraries.
+                            card.remove();
+                            libraryComics = libraryComics.filter(item => item.id !== comic.id);
+                            libraryCount.textContent = `${libraryComics.length} comic${libraryComics.length === 1 ? '' : 's'}`;
+
+                            if (libraryGrid.children.length === 0) {
+                                const heading = libraryEmpty.querySelector('h3');
+                                const paragraph = libraryEmpty.querySelector('p');
+                                const query = librarySearch.value.trim().toLowerCase();
+                                if (query && libraryComics.length) {
+                                    heading.textContent = 'No comics found';
+                                    paragraph.textContent = `Nothing in your library matches “${query}”.`;
+                                } else {
+                                    heading.textContent = 'Your library is empty';
+                                    paragraph.textContent = 'Add a comic folder to build your personal library. Your comics are stored locally in this browser.';
+                                }
+                                libraryGrid.classList.add('hidden');
+                                libraryEmpty.classList.remove('hidden');
+                            }
+
                             showToast('Comic removed from library', 'success');
-                            await renderLibrary();
-                            await updateStorageUsage();
                         } catch (error) {
                             console.error(error);
                             showError('Could not remove that comic.');
@@ -1550,9 +1770,9 @@
                     libraryGrid.appendChild(card);
 
                     try {
-                        const pages = await getPageRecords(comic.id);
-                        if (pages[0]) {
-                            const coverURL = makeCoverURL(pages[0].blob);
+                        const firstPage = await dbRequest('pages', 'readonly', store => store.get(`${comic.id}:0`));
+                        if (firstPage) {
+                            const coverURL = makeCoverURL(firstPage.blob);
                             img.src = coverURL;
                             img.onload = () => URL.revokeObjectURL(coverURL);
                         }
@@ -1560,7 +1780,7 @@
                         console.warn('Could not load library cover:', error);
                     }
                 }
-                await updateStorageUsage();
+                if (updateStorage) await updateStorageUsage();
             }
 
             async function openComicFromLibrary(comicId) {
@@ -1608,7 +1828,6 @@
                 try {
                     await openLibraryDB();
                     await renderLibrary();
-                    await updateStorageUsage();
                 } catch (error) {
                     console.error('Library initialization failed:', error);
                     showError('Local library storage is unavailable in this browser.');
@@ -1686,6 +1905,76 @@
                 setPinMessage('');
             });
 
+            function closePurgeConfirmation() {
+                purgeConfirm.classList.add('hidden');
+                purgePinInput.value = '';
+                purgeMessage.textContent = '';
+                purgePinInput.classList.remove('error');
+            }
+
+            function openPurgeConfirmation() {
+                if (purgeBtn.disabled || !libraryUnlocked) return;
+                purgePinInput.value = '';
+                purgeMessage.textContent = '';
+                purgeConfirm.classList.remove('hidden');
+                setTimeout(() => purgePinInput.focus(), 0);
+            }
+
+            async function handlePurgeSubmit(event) {
+                event.preventDefault();
+                const pin = purgePinInput.value;
+                if (!/^\d{6}$/.test(pin)) {
+                    purgeMessage.textContent = 'Please enter exactly 6 digits.';
+                    purgePinInput.classList.add('error');
+                    setTimeout(() => purgePinInput.classList.remove('error'), 300);
+                    purgePinInput.focus();
+                    return;
+                }
+
+                const existingHash = localStorage.getItem(PIN_STORAGE_KEY);
+                const hash = await hashPIN(pin);
+                if (!existingHash || hash !== existingHash) {
+                    purgeMessage.textContent = 'Incorrect PIN.';
+                    purgePinInput.value = '';
+                    purgePinInput.classList.add('error');
+                    setTimeout(() => purgePinInput.classList.remove('error'), 300);
+                    purgePinInput.focus();
+                    return;
+                }
+
+                closePurgeConfirmation();
+                setTransferControlsDisabled(true);
+                setTransferProgress(true, 'Purging library…', 'Deleting all comics and pages from local storage.', 20);
+                try {
+                    await yieldToBrowser();
+                    await purgeEntireLibrary();
+                    libraryComics = [];
+                    if (isReading) exitReader();
+                    setCachedStorageUsage(0);
+                    setTransferProgress(true, 'Purge complete', 'Your local comic library has been deleted.', 100);
+                    await renderLibrary(false);
+                    showToast('Entire library purged.', 'success');
+                    setTimeout(() => setTransferProgress(false), 1600);
+                } catch (error) {
+                    console.error('Purge failed:', error);
+                    setTransferProgress(false);
+                    showError('Could not purge the library.');
+                } finally {
+                    setTransferControlsDisabled(false);
+                }
+            }
+
+            purgeBtn.addEventListener('click', openPurgeConfirmation);
+            purgeCancel.addEventListener('click', closePurgeConfirmation);
+            purgeForm.addEventListener('submit', handlePurgeSubmit);
+            purgePinInput.addEventListener('input', () => {
+                purgePinInput.value = purgePinInput.value.replace(/\D/g, '').slice(0, 6);
+                purgeMessage.textContent = '';
+            });
+            purgeConfirm.addEventListener('click', (event) => {
+                if (event.target === purgeConfirm) closePurgeConfirmation();
+            });
+
             // ─── Helpers ───
             function formatFileName(name) {
                 // Remove extension and clean up
@@ -1714,6 +2003,39 @@
 
             function showError(message) {
                 showToast(message, 'error');
+            }
+
+            function setTransferProgress(visible, title = '', status = '', percent = 0) {
+                if (!visible) {
+                    transferProgress.classList.add('hidden');
+                    return;
+                }
+
+                const safePercent = Math.max(0, Math.min(100, Number(percent) || 0));
+                transferProgress.classList.remove('hidden');
+                transferProgressTitle.textContent = title;
+                transferProgressPercent.textContent = `${Math.round(safePercent)}%`;
+                transferProgressStatus.textContent = status;
+                transferProgressBar.style.width = `${safePercent}%`;
+                transferProgressTrack.setAttribute('aria-valuenow', String(Math.round(safePercent)));
+            }
+
+            function setTransferControlsDisabled(disabled) {
+                backupBtn.disabled = disabled;
+                restoreBtn.disabled = disabled;
+                purgeBtn.disabled = disabled;
+                addComicBtn.disabled = disabled;
+                emptyAddComicBtn.disabled = disabled;
+            }
+
+            function yieldToBrowser() {
+                return new Promise(resolve => {
+                    if (typeof requestIdleCallback === 'function') {
+                        requestIdleCallback(() => resolve(), { timeout: 50 });
+                    } else {
+                        setTimeout(resolve, 0);
+                    }
+                });
             }
 
             // ─── Image loading ───
@@ -1969,7 +2291,6 @@
                 // Reset file input so the same folder can be uploaded again.
                 folderInput.value = '';
                 renderLibrary().catch(console.error);
-                updateStorageUsage().catch(console.error);
             }
 
             // ─── Toggle thumbnails ───
@@ -2149,26 +2470,44 @@
 
             // ─── Backup ───
             backupBtn.addEventListener('click', async () => {
+                if (backupBtn.disabled) return;
+
+                let busy = false;
                 try {
+                    busy = true;
+                    setTransferControlsDisabled(true);
+
                     const comics = await getAllComics();
                     if (comics.length === 0) {
                         showToast('No comics to backup. Add some first!', 'error');
                         return;
                     }
 
-                    showToast('Preparing backup…', 'success');
-                    const zip = new JSZip();
+                    setTransferProgress(true, 'Preparing backup…', `Reading ${comics.length} comic${comics.length === 1 ? '' : 's'} from local storage.`, 0);
+                    await yieldToBrowser();
 
+                    const zip = new JSZip();
                     let totalPages = 0;
+                    let preparedPages = 0;
+
+                    // Add files in small batches so the UI gets regular opportunities to breathe.
                     for (const comic of comics) {
                         const pages = await getPageRecords(comic.id);
                         if (!pages.length) continue;
+
                         const folder = zip.folder(comic.name);
                         for (const page of pages) {
-                            // Use the original file name to preserve extension
                             const fileName = page.name || `page_${page.index + 1}.jpg`;
-                            folder.file(fileName, page.blob);
+                            // Comic images are already compressed (JPEG/PNG/WebP), so STORE avoids
+                            // wasting CPU recompressing them while still keeping the ZIP structure.
+                            folder.file(fileName, page.blob, { compression: 'STORE' });
                             totalPages++;
+                            preparedPages++;
+
+                            if (preparedPages % 50 === 0) {
+                                setTransferProgress(true, 'Preparing backup…', `Added ${preparedPages.toLocaleString()} pages to the archive.`, 10 + (preparedPages / Math.max(1, totalPages || preparedPages)) * 5);
+                                await yieldToBrowser();
+                            }
                         }
                     }
 
@@ -2177,8 +2516,33 @@
                         return;
                     }
 
-                    showToast(`Zipping ${totalPages} pages…`, 'success');
-                    const zipBlob = await zip.generateAsync({ type: 'blob' });
+                    // Recalculate a stable preparation percentage now that the total is known.
+                    setTransferProgress(true, 'Creating ZIP…', `Packaging ${totalPages.toLocaleString()} pages without recompressing image data.`, 15);
+                    await yieldToBrowser();
+
+                    // STORE + streamFiles keeps CPU and temporary memory use much lower for image libraries.
+                    const zipBlob = await zip.generateAsync(
+                        {
+                            type: 'blob',
+                            compression: 'STORE',
+                            streamFiles: true,
+                            platform: 'UNIX'
+                        },
+                        metadata => {
+                            const percent = 15 + (Math.max(0, Math.min(100, metadata.percent || 0)) * 0.83);
+                            const currentFile = metadata.currentFile ? ` • ${metadata.currentFile}` : '';
+                            setTransferProgress(
+                                true,
+                                'Creating ZIP…',
+                                `Processing ${totalPages.toLocaleString()} pages${currentFile}`,
+                                percent
+                            );
+                        }
+                    );
+
+                    setTransferProgress(true, 'Starting download…', 'The backup is ready. Handing the ZIP to your browser…', 99);
+                    await yieldToBrowser();
+
                     const url = URL.createObjectURL(zipBlob);
                     const a = document.createElement('a');
                     a.href = url;
@@ -2186,16 +2550,23 @@
                     document.body.appendChild(a);
                     a.click();
                     document.body.removeChild(a);
-                    setTimeout(() => URL.revokeObjectURL(url), 5000);
+                    setTimeout(() => URL.revokeObjectURL(url), 10000);
+
+                    setTransferProgress(true, 'Backup complete', `${totalPages.toLocaleString()} pages are in the downloaded ZIP.`, 100);
                     showToast(`Backup created with ${totalPages} pages.`, 'success');
+                    setTimeout(() => setTransferProgress(false), 1800);
                 } catch (error) {
                     console.error('Backup failed:', error);
+                    setTransferProgress(false);
                     showError('Backup failed. See console for details.');
+                } finally {
+                    if (busy) setTransferControlsDisabled(false);
                 }
             });
 
             // ─── Restore (with duplicate detection) ───
             restoreBtn.addEventListener('click', () => {
+                if (restoreBtn.disabled) return;
                 restoreInput.click();
             });
 
@@ -2204,60 +2575,104 @@
                 const file = e.target.files[0];
                 restoreInput.value = ''; // reset
 
+                let busy = false;
                 try {
-                    showToast('Reading backup…', 'success');
-                    const zip = await JSZip.loadAsync(file);
-                    const folders = {}; // folderName -> [{name, blob}]
+                    busy = true;
+                    setTransferControlsDisabled(true);
+                    setTransferProgress(true, 'Reading backup…', `Opening ${file.name} (${formatBytes(file.size)}).`, 0);
+                    await yieldToBrowser();
 
-                    const entries = Object.keys(zip.files);
-                    for (const path of entries) {
-                        const entry = zip.files[path];
-                        if (entry.dir) continue;
-                        const parts = path.split('/');
+                    const zip = await JSZip.loadAsync(file, {
+                        // CRC checks are unnecessary for this app's own backups and add extra CPU work.
+                        checkCRC32: false,
+                        createFolders: false
+                    });
+
+                    const entries = Object.values(zip.files).filter(entry => !entry.dir);
+                    if (entries.length === 0) {
+                        showError('The backup contains no comic pages.');
+                        return;
+                    }
+
+                    // First pass: group only entry paths by comic. We do NOT inflate every image into
+                    // memory up front. Each comic is restored one at a time, which dramatically lowers peak RAM use.
+                    const comicEntries = new Map();
+                    for (const entry of entries) {
+                        const parts = entry.name.split('/').filter(Boolean);
                         if (parts.length < 2) continue;
+
                         const folderName = parts[0];
                         const baseName = parts[parts.length - 1];
-                        if (!folders[folderName]) folders[folderName] = [];
-                        const blob = await entry.async('blob');
-                        folders[folderName].push({ name: baseName, file: blob });
+                        if (!comicEntries.has(folderName)) comicEntries.set(folderName, []);
+                        comicEntries.get(folderName).push({ entry, name: baseName });
                     }
 
-                    // Get existing comic names from library (case-insensitive)
+                    if (comicEntries.size === 0) {
+                        showError('The backup does not contain valid comic folders.');
+                        return;
+                    }
+
                     const existingComics = await getAllComics();
                     const existingNames = new Set(existingComics.map(c => c.name.toLowerCase()));
+                    const newComicEntries = Array.from(comicEntries.entries())
+                        .filter(([folderName]) => !existingNames.has(folderName.toLowerCase()));
 
-                    // Filter out folders that already exist
-                    const newFolders = {};
-                    for (const [folderName, files] of Object.entries(folders)) {
-                        if (!existingNames.has(folderName.toLowerCase())) {
-                            newFolders[folderName] = files;
-                        }
-                    }
-
-                    const newCount = Object.keys(newFolders).length;
-                    if (newCount === 0) {
+                    if (newComicEntries.length === 0) {
+                        setTransferProgress(false);
                         showToast('No new comics to restore (all already in library).', 'success');
                         return;
                     }
 
+                    const totalRestorePages = newComicEntries.reduce((sum, [, items]) => sum + items.length, 0);
+                    let restoredPages = 0;
                     let added = 0;
-                    for (const [folderName, files] of Object.entries(newFolders)) {
-                        files.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true }));
-                        const filtered = files.map(f => ({ name: f.name, file: f.file, url: null }));
+
+                    for (const [folderName, items] of newComicEntries) {
+                        items.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+
+                        const files = [];
+                        for (const item of items) {
+                            const blob = await item.entry.async('blob');
+                            files.push({ name: item.name, file: blob, url: null });
+                            restoredPages++;
+
+                            const percent = (restoredPages / totalRestorePages) * 90;
+                            setTransferProgress(
+                                true,
+                                'Restoring backup…',
+                                `${restoredPages.toLocaleString()} of ${totalRestorePages.toLocaleString()} pages • ${folderName}`,
+                                percent
+                            );
+
+                            // Yield regularly to avoid locking the browser while large backups inflate.
+                            if (restoredPages % 20 === 0) await yieldToBrowser();
+                        }
+
                         try {
-                            await saveComicToLibrary(filtered, folderName);
+                            await saveComicToLibrary(files, folderName);
                             added++;
                         } catch (err) {
                             console.error(`Failed to restore comic ${folderName}:`, err);
                         }
+
+                        // Release the per-comic Blob array before moving on to the next comic.
+                        files.length = 0;
+                        await yieldToBrowser();
                     }
 
+                    setTransferProgress(true, 'Finishing restore…', 'Refreshing your library and storage information.', 95);
                     await renderLibrary();
                     await updateStorageUsage();
+
+                    setTransferProgress(true, 'Restore complete', `Restored ${added} new comic${added !== 1 ? 's' : ''} (${restoredPages.toLocaleString()} pages).`, 100);
                     showToast(`Restored ${added} new comic${added !== 1 ? 's' : ''} from backup.`, 'success');
+                    setTimeout(() => setTransferProgress(false), 1800);
                 } catch (err) {
                     console.error('Restore failed:', err);
+                    setTransferProgress(false);
                     showError('Failed to restore backup. Ensure it\'s a valid comic backup zip.');
+                } finally {
+                    if (busy) setTransferControlsDisabled(false);
                 }
             });
 
