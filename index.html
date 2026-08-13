@@ -1216,6 +1216,435 @@
             }
         }
 
+        /* ─── Modern UI polish ─── */
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        body {
+            background:
+                radial-gradient(circle at 10% 0%, rgba(46, 204, 113, 0.055), transparent 28%),
+                radial-gradient(circle at 92% 14%, rgba(255, 255, 255, 0.035), transparent 22%),
+                var(--bg-primary);
+        }
+
+        .btn, .btn-icon, .comic-card, .comic-favorite, .comic-delete, .library-select, .library-search {
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .btn:focus-visible, .btn-icon:focus-visible, .comic-favorite:focus-visible, .comic-delete:focus-visible, .library-search:focus-visible, .library-select:focus-visible {
+            outline: 2px solid var(--accent);
+            outline-offset: 3px;
+        }
+
+        .btn:hover {
+            transform: translateY(-1px);
+        }
+        .btn:active {
+            transform: translateY(1px) scale(0.98);
+            transition-duration: 0.08s;
+        }
+
+        .library-topbar {
+            background: rgba(12, 12, 12, 0.72);
+            border-bottom-color: rgba(255,255,255,0.07);
+            box-shadow: 0 14px 40px rgba(0,0,0,0.16);
+        }
+        .library-brand { gap: 14px; }
+        .library-brand h1 {
+            font-size: clamp(19px, 2vw, 23px);
+            letter-spacing: -0.55px;
+        }
+        .library-brand .storage-usage {
+            margin-left: 0;
+            background: rgba(255,255,255,0.035);
+            border-color: rgba(255,255,255,0.07);
+        }
+        .library-content {
+            padding: clamp(24px, 4vw, 42px);
+        }
+        .library-heading {
+            align-items: center;
+            margin-bottom: 28px;
+        }
+        .library-heading-copy .eyebrow {
+            color: var(--accent);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            margin-bottom: 8px;
+        }
+        .library-heading h2 {
+            font-size: clamp(28px, 3vw, 38px);
+            letter-spacing: -1.2px;
+        }
+        .library-heading p { margin-top: 7px; color: var(--text-muted); }
+        .library-controls {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        .library-search-wrap { position: relative; width: min(300px, 100%); }
+        .library-search-icon {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-53%);
+            color: var(--text-muted);
+            font-size: 20px;
+            pointer-events: none;
+        }
+        .library-search {
+            width: 100%;
+            padding: 12px 16px 12px 40px;
+            background: rgba(255,255,255,0.035);
+            border-color: rgba(255,255,255,0.08);
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.025);
+        }
+        .library-search:focus {
+            background: rgba(255,255,255,0.05);
+        }
+        .library-select-wrap { position: relative; }
+        .library-select {
+            appearance: none;
+            min-width: 142px;
+            padding: 12px 34px 12px 14px;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 50px;
+            background: rgba(255,255,255,0.035);
+            color: var(--text-secondary);
+            font: 500 13px/1 var(--font);
+            cursor: pointer;
+            background-image: linear-gradient(45deg, transparent 50%, var(--text-muted) 50%), linear-gradient(135deg, var(--text-muted) 50%, transparent 50%);
+            background-position: calc(100% - 16px) 50%, calc(100% - 11px) 50%;
+            background-size: 5px 5px, 5px 5px;
+            background-repeat: no-repeat;
+            transition: border-color .2s, background .2s, transform .12s;
+        }
+        .library-select:hover {
+            border-color: rgba(255,255,255,0.14);
+            background-color: rgba(255,255,255,0.05);
+        }
+        .library-select:active { transform: scale(0.99); }
+
+        .library-grid {
+            grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+            gap: 28px 22px;
+        }
+        .comic-card {
+            background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.015));
+            border-color: rgba(255,255,255,0.075);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.14);
+            transition: transform .24s cubic-bezier(.2,.8,.2,1), border-color .24s ease, box-shadow .24s ease;
+        }
+        .comic-card:hover {
+            transform: translateY(-7px);
+            border-color: rgba(255,255,255,0.14);
+            box-shadow: 0 20px 48px rgba(0,0,0,0.32);
+        }
+        .comic-card:not(.is-favorite) {
+            border-color: rgba(46, 204, 113, 0.16);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.14), 0 7px 24px rgba(46,204,113,0.045);
+        }
+        .comic-card:not(.is-favorite):hover {
+            border-color: rgba(46, 204, 113, 0.28);
+            box-shadow: 0 20px 48px rgba(0,0,0,0.32), 0 10px 30px rgba(46,204,113,0.075);
+        }
+        .comic-card.is-favorite {
+            border-color: rgba(230, 190, 74, 0.28);
+            box-shadow: 0 18px 46px rgba(0,0,0,0.28), 0 10px 34px rgba(230,190,74,0.10);
+            transform: scale(1.012);
+            z-index: 1;
+        }
+        .comic-card.is-favorite:hover {
+            border-color: rgba(230, 190, 74, 0.46);
+            box-shadow: 0 24px 56px rgba(0,0,0,0.36), 0 12px 38px rgba(230,190,74,0.14);
+            transform: translateY(-7px) scale(1.018);
+        }
+        .comic-cover {
+            background: #101010;
+            box-shadow: inset 0 -30px 40px rgba(0,0,0,0.1);
+        }
+        .comic-cover img {
+            transition: transform .5s cubic-bezier(.2,.8,.2,1), opacity .25s ease;
+        }
+        .comic-card:hover .comic-cover img { transform: scale(1.035); }
+        .comic-cover::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg, rgba(0,0,0,0.01) 40%, rgba(0,0,0,0.34));
+            pointer-events: none;
+        }
+        .comic-card-body { padding: 14px 15px 15px; }
+        .comic-card-title {
+            font-size: 14px;
+            line-height: 1.35;
+            letter-spacing: -0.15px;
+        }
+        .comic-card-meta {
+            color: #8e8e8e;
+            font-size: 11px;
+            margin-top: 8px;
+        }
+        .comic-card-submeta {
+            display: flex;
+            justify-content: space-between;
+            gap: 8px;
+            color: var(--text-muted);
+            font-size: 10px;
+            margin-top: 7px;
+        }
+        .comic-progress {
+            width: 100%;
+            height: 3px;
+            margin-top: 11px;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.075);
+            overflow: hidden;
+        }
+        .comic-progress span {
+            display: block;
+            height: 100%;
+            border-radius: inherit;
+            background: linear-gradient(90deg, rgba(46,204,113,0.65), var(--accent));
+            transition: width .35s ease;
+        }
+        .comic-card.is-favorite .comic-progress span {
+            background: linear-gradient(90deg, rgba(212,174,61,0.65), #e8c866);
+        }
+        .comic-favorite, .comic-delete {
+            position: absolute;
+            top: 10px;
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(7,7,7,0.58);
+            color: rgba(255,255,255,0.78);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            cursor: pointer;
+            z-index: 3;
+            opacity: 0;
+            transform: translateY(-3px) scale(.94);
+            transition: opacity .18s ease, transform .18s ease, color .18s ease, border-color .18s ease, background .18s ease;
+        }
+        .comic-favorite { right: 48px; font-size: 17px; line-height: 1; }
+        .comic-delete { right: 9px; }
+        .comic-card:hover .comic-favorite, .comic-card:hover .comic-delete, .comic-favorite:focus-visible, .comic-delete:focus-visible, .comic-card.is-favorite .comic-favorite {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+        .comic-favorite:hover { color: #e8c866; border-color: rgba(232,200,102,0.48); background: rgba(48,40,18,0.78); }
+        .comic-favorite.active { color: #e8c866; text-shadow: 0 0 18px rgba(232,200,102,0.4); }
+        .comic-delete:hover { background: rgba(90,20,18,0.78); border-color: rgba(231,76,60,0.42); color: #ffaaa0; }
+        .comic-delete:active, .comic-favorite:active { transform: scale(0.9); }
+
+        .reader-topbar {
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 0;
+            background: transparent;
+            border-bottom: 0;
+            backdrop-filter: none;
+            -webkit-backdrop-filter: none;
+            padding: 14px 22px 26px;
+            min-height: 72px;
+        }
+        .reader-topbar .title { max-width: min(42vw, 520px); font-size: 15px; text-shadow: 0 2px 12px rgba(0,0,0,0.5); }
+        .reader-topbar .page-info {
+            background: rgba(15,15,15,0.42);
+            border-color: rgba(255,255,255,0.09);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+        }
+        .reader-topbar .actions .btn-icon {
+            background: rgba(15,15,15,0.28);
+            border: 1px solid rgba(255,255,255,0.07);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        .reader-topbar .actions .btn-icon:hover {
+            background: rgba(255,255,255,0.08);
+        }
+
+        /* ─── Full Gallery View ─── */
+        #galleryView {
+            position: fixed;
+            inset: 0;
+            z-index: 80;
+            display: none;
+            flex-direction: column;
+            background: #070707;
+            color: var(--text-primary);
+        }
+        #galleryView.active { display: flex; }
+        .gallery-topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 14px 20px;
+            min-height: 58px;
+            flex-shrink: 0;
+            background: rgba(7,7,7,0.72);
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+        }
+        .gallery-title {
+            min-width: 0;
+            font-size: 15px;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .gallery-close {
+            width: 38px;
+            height: 38px;
+            flex: 0 0 auto;
+            display: grid;
+            place-items: center;
+            border: 1px solid rgba(255,255,255,0.10);
+            border-radius: 50%;
+            background: rgba(255,255,255,0.04);
+            color: var(--text-primary);
+            cursor: pointer;
+            font-size: 17px;
+            transition: transform .15s ease, background .18s ease, border-color .18s ease;
+        }
+        .gallery-close:hover {
+            background: rgba(255,255,255,0.08);
+            border-color: rgba(255,255,255,0.18);
+            transform: scale(1.05);
+        }
+        .gallery-close:active { transform: scale(.94); }
+        .gallery-scroll {
+            flex: 1;
+            min-height: 0;
+            overflow: auto;
+            padding: 12px;
+        }
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+            gap: 1px;
+            width: 100%;
+            max-width: 2400px;
+            margin: 0 auto;
+            background: rgba(255,255,255,0.10);
+        }
+        .gallery-page {
+            min-width: 0;
+            position: relative;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            background: #0b0b0b;
+            overflow: hidden;
+            cursor: zoom-in;
+        }
+        .gallery-page:hover {
+            background: #111;
+        }
+        .gallery-page img {
+            display: block;
+            width: 100%;
+            height: auto;
+            max-width: 100%;
+            object-fit: contain;
+            background: #0b0b0b;
+            user-select: none;
+        }
+        .gallery-page-number {
+            position: absolute;
+            left: 8px;
+            top: 8px;
+            padding: 3px 7px;
+            border: 1px solid rgba(255,255,255,0.10);
+            border-radius: 999px;
+            background: rgba(0,0,0,0.55);
+            color: rgba(255,255,255,0.78);
+            font-size: 10px;
+            line-height: 1.2;
+            pointer-events: none;
+        }
+        @media (max-width: 700px) {
+            .gallery-scroll { padding: 8px; }
+            .gallery-grid { grid-template-columns: repeat(auto-fit, minmax(min(100%, 165px), 1fr)); }
+        }
+        #closeReader {
+            width: 38px;
+            height: 38px;
+            border-color: rgba(255,255,255,0.12);
+            background: rgba(15,15,15,0.34);
+            box-shadow: none;
+        }
+        #closeReader:hover {
+            border-color: rgba(46,204,113,0.55);
+            box-shadow: 0 6px 24px rgba(46,204,113,0.14);
+        }
+        .reader-main {
+            background:
+                radial-gradient(circle at 50% 42%, rgba(255,255,255,0.025), transparent 35%),
+                #070707;
+        }
+        .reader-bottombar {
+            background: linear-gradient(0deg, rgba(7,7,7,0.84), rgba(7,7,7,0.25));
+            border-top-color: rgba(255,255,255,0.05);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+        }
+        .nav-arrow {
+            background: rgba(15,15,15,0.38);
+            border-color: rgba(255,255,255,0.10);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.22);
+        }
+        .thumbnail-strip .thumb-item {
+            border-color: rgba(255,255,255,0.06);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.16);
+        }
+        .thumbnail-strip .thumb-item.active {
+            box-shadow: 0 0 24px rgba(46,204,113,0.16);
+        }
+
+        @media (hover: none) {
+            .comic-favorite, .comic-delete { opacity: 1; transform: none; }
+        }
+
+        @media (max-width: 900px) {
+            .library-heading { align-items: stretch; flex-direction: column; }
+            .library-controls { justify-content: flex-start; }
+        }
+
+        @media (max-width: 620px) {
+            .library-controls { display: grid; grid-template-columns: 1fr 1fr; }
+            .library-search-wrap { grid-column: 1 / -1; width: 100%; }
+            .library-select { width: 100%; min-width: 0; }
+            .library-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 18px 14px; }
+            .library-topbar { padding: 12px 16px; }
+            .library-actions { gap: 6px; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { scroll-behavior: auto !important; animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+        }
+
         /* ─── Utilities ─── */
         .hidden {
             display: none !important;
@@ -1280,8 +1709,7 @@
     <div id="libraryView">
         <header class="library-topbar">
             <div class="library-brand">
-                <span class="brand-icon">📚</span>
-                <h1>Comic Reader</h1>
+                <h1>Simple Comic Reader</h1>
                 <span class="storage-usage" id="storageUsage">0 MB stored</span>
             </div>
             <div class="library-actions">
@@ -1297,11 +1725,38 @@
 
         <main class="library-content">
             <div class="library-heading">
-                <div>
+                <div class="library-heading-copy">
+                    <div class="eyebrow">Your collection</div>
                     <h2>Library</h2>
                     <p id="libraryCount">0 comics</p>
                 </div>
-                <input class="library-search" id="librarySearch" type="search" placeholder="Search your library…" aria-label="Search library" />
+                <div class="library-controls" aria-label="Library controls">
+                    <div class="library-search-wrap">
+                        <span class="library-search-icon" aria-hidden="true">⌕</span>
+                        <input class="library-search" id="librarySearch" type="search" placeholder="Search your library…" aria-label="Search library" />
+                    </div>
+                    <label class="library-select-wrap">
+                        <span class="sr-only">Sort library</span>
+                        <select class="library-select" id="librarySort" aria-label="Sort library">
+                            <option value="lastRead">Recently read</option>
+                            <option value="addedAt">Recently added</option>
+                            <option value="titleAsc">Title A–Z</option>
+                            <option value="titleDesc">Title Z–A</option>
+                            <option value="pagesDesc">Longest first</option>
+                            <option value="pagesAsc">Shortest first</option>
+                        </select>
+                    </label>
+                    <label class="library-select-wrap">
+                        <span class="sr-only">Filter library</span>
+                        <select class="library-select" id="libraryFilter" aria-label="Filter library">
+                            <option value="all">All comics</option>
+                            <option value="favorites">Favorites</option>
+                            <option value="unread">Unread</option>
+                            <option value="progress">In progress</option>
+                            <option value="finished">Finished</option>
+                        </select>
+                    </label>
+                </div>
             </div>
 
             <div class="library-grid" id="libraryGrid"></div>
@@ -1362,6 +1817,9 @@
                 <button class="btn-icon" id="toggleThumbs" title="Toggle thumbnails" aria-label="Toggle thumbnails">
                     ▦
                 </button>
+                <button class="btn-icon" id="galleryBtn" title="Gallery view" aria-label="Gallery view">
+                    ▤
+                </button>
                 <button class="btn-icon" id="fullscreenBtn" title="Fullscreen" aria-label="Fullscreen">
                     ⛶
                 </button>
@@ -1390,6 +1848,17 @@
         </div>
     </div>
 
+    <!-- ─── FULL GALLERY VIEW ─── -->
+    <div id="galleryView" aria-hidden="true">
+        <div class="gallery-topbar">
+            <div class="gallery-title" id="galleryTitle">Gallery</div>
+            <button class="gallery-close" id="galleryClose" type="button" title="Close gallery" aria-label="Close gallery">✕</button>
+        </div>
+        <div class="gallery-scroll" id="galleryScroll">
+            <div class="gallery-grid" id="galleryGrid"></div>
+        </div>
+    </div>
+
     <script>
         (function() {
             'use strict';
@@ -1400,6 +1869,8 @@
             const libraryEmpty = document.getElementById('libraryEmpty');
             const libraryCount = document.getElementById('libraryCount');
             const librarySearch = document.getElementById('librarySearch');
+            const librarySort = document.getElementById('librarySort');
+            const libraryFilter = document.getElementById('libraryFilter');
             const addComicBtn = document.getElementById('addComicBtn');
             const emptyAddComicBtn = document.getElementById('emptyAddComicBtn');
             const closeUpload = document.getElementById('closeUpload');
@@ -1421,6 +1892,11 @@
             const thumbStrip = document.getElementById('thumbStrip');
             const bottomBar = document.getElementById('bottomBar');
             const toggleThumbs = document.getElementById('toggleThumbs');
+            const galleryBtn = document.getElementById('galleryBtn');
+            const galleryView = document.getElementById('galleryView');
+            const galleryTitle = document.getElementById('galleryTitle');
+            const galleryClose = document.getElementById('galleryClose');
+            const galleryGrid = document.getElementById('galleryGrid');
             const fullscreenBtn = document.getElementById('fullscreenBtn');
             const toast = document.getElementById('toast');
             const pinLock = document.getElementById('pinLock');
@@ -1663,16 +2139,75 @@
                 storageUsage.textContent = formatBytes(cachedStorageBytes) + ' stored';
             }
 
+            async function updateComicFavorite(comicId, favorite) {
+                if (!db || !comicId) return;
+                const comic = await dbRequest('comics', 'readonly', store => store.get(comicId));
+                if (!comic) return;
+                comic.favorite = !!favorite;
+                await dbRequest('comics', 'readwrite', store => store.put(comic));
+            }
+
+            function getComicStatus(comic) {
+                const pageCount = Math.max(0, Number(comic.pageCount) || 0);
+                const currentPage = Math.max(0, Number(comic.currentIndex) || 0);
+                if (pageCount === 0 || currentPage <= 0) return 'unread';
+                if (currentPage >= pageCount - 1) return 'finished';
+                return 'progress';
+            }
+
+            function sortLibraryComics(comics) {
+                const sort = librarySort.value;
+                return [...comics].sort((a, b) => {
+                    // Favorites always stay above non-favorites, regardless of the selected sort.
+                    const favoriteDelta = Number(!!b.favorite) - Number(!!a.favorite);
+                    if (favoriteDelta) return favoriteDelta;
+
+                    switch (sort) {
+                        case 'titleAsc':
+                            return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+                        case 'titleDesc':
+                            return b.name.localeCompare(a.name, undefined, { numeric: true, sensitivity: 'base' });
+                        case 'pagesDesc':
+                            return (b.pageCount || 0) - (a.pageCount || 0) || (b.lastRead || b.addedAt || 0) - (a.lastRead || a.addedAt || 0);
+                        case 'pagesAsc':
+                            return (a.pageCount || 0) - (b.pageCount || 0) || (b.lastRead || b.addedAt || 0) - (a.lastRead || a.addedAt || 0);
+                        case 'addedAt':
+                            return (b.addedAt || 0) - (a.addedAt || 0);
+                        case 'lastRead':
+                        default:
+                            return (b.lastRead || b.addedAt || 0) - (a.lastRead || a.addedAt || 0);
+                    }
+                });
+            }
+
+            function filterLibraryComics(comics) {
+                const filter = libraryFilter.value;
+                if (filter === 'favorites') return comics.filter(comic => !!comic.favorite);
+                if (filter === 'unread') return comics.filter(comic => getComicStatus(comic) === 'unread');
+                if (filter === 'progress') return comics.filter(comic => getComicStatus(comic) === 'progress');
+                if (filter === 'finished') return comics.filter(comic => getComicStatus(comic) === 'finished');
+                return comics;
+            }
+
             // ─── Render library ───
             async function renderLibrary(updateStorage = true) {
                 libraryComics = await getAllComics();
                 const query = librarySearch.value.trim().toLowerCase();
-                const visible = query
-                    ? libraryComics.filter(comic => comic.name.toLowerCase().includes(query))
-                    : libraryComics;
+
+                let visible = libraryComics;
+                if (query) {
+                    visible = visible.filter(comic => comic.name.toLowerCase().includes(query));
+                }
+                visible = filterLibraryComics(visible);
+                visible = sortLibraryComics(visible);
 
                 libraryGrid.innerHTML = '';
-                libraryCount.textContent = `${libraryComics.length} comic${libraryComics.length === 1 ? '' : 's'}`;
+                const totalCount = libraryComics.length;
+                const visibleCount = visible.length;
+                const suffix = query || libraryFilter.value !== 'all'
+                    ? ` • ${visibleCount} shown`
+                    : '';
+                libraryCount.textContent = `${totalCount} comic${totalCount === 1 ? '' : 's'}${suffix}`;
 
                 libraryEmpty.classList.toggle('hidden', visible.length !== 0);
                 libraryGrid.classList.toggle('hidden', visible.length === 0);
@@ -1683,6 +2218,9 @@
                     if (query && libraryComics.length) {
                         heading.textContent = 'No comics found';
                         paragraph.textContent = `Nothing in your library matches “${query}”.`;
+                    } else if (libraryFilter.value !== 'all' && libraryComics.length) {
+                        heading.textContent = 'Nothing here yet';
+                        paragraph.textContent = 'No comics currently match this filter.';
                     } else {
                         heading.textContent = 'Your library is empty';
                         paragraph.textContent = 'Add a comic folder to build your personal library. Your comics are stored locally in this browser.';
@@ -1691,9 +2229,12 @@
                     return;
                 }
 
+                const fragment = document.createDocumentFragment();
+                const coverTargets = [];
+
                 for (const comic of visible) {
                     const card = document.createElement('article');
-                    card.className = 'comic-card';
+                    card.className = 'comic-card' + (comic.favorite ? ' is-favorite' : '');
                     card.title = 'Open ' + comic.name;
 
                     const cover = document.createElement('div');
@@ -1701,12 +2242,53 @@
 
                     const img = document.createElement('img');
                     img.alt = comic.name;
+                    img.loading = 'lazy';
                     cover.appendChild(img);
 
-                    const count = document.createElement('span');
-                    count.className = 'page-count';
-                    count.textContent = `${comic.pageCount} page${comic.pageCount === 1 ? '' : 's'}`;
-                    cover.appendChild(count);
+                    const favoriteButton = document.createElement('button');
+                    favoriteButton.className = 'comic-favorite' + (comic.favorite ? ' active' : '');
+                    favoriteButton.type = 'button';
+                    favoriteButton.textContent = comic.favorite ? '★' : '☆';
+                    favoriteButton.title = comic.favorite ? 'Remove from favorites' : 'Add to favorites';
+                    favoriteButton.setAttribute('aria-label', favoriteButton.title);
+                    favoriteButton.setAttribute('aria-pressed', String(!!comic.favorite));
+                    favoriteButton.addEventListener('click', async (event) => {
+                        event.stopPropagation();
+                        const nextFavorite = !comic.favorite;
+                        try {
+                            await updateComicFavorite(comic.id, nextFavorite);
+                            comic.favorite = nextFavorite;
+                            const stored = libraryComics.find(item => item.id === comic.id);
+                            if (stored) stored.favorite = nextFavorite;
+                            card.classList.toggle('is-favorite', nextFavorite);
+                            favoriteButton.classList.toggle('active', nextFavorite);
+                            favoriteButton.textContent = nextFavorite ? '★' : '☆';
+                            favoriteButton.title = nextFavorite ? 'Remove from favorites' : 'Add to favorites';
+                            favoriteButton.setAttribute('aria-label', favoriteButton.title);
+                            favoriteButton.setAttribute('aria-pressed', String(nextFavorite));
+
+                            // Keep the always-on-top favorite ordering without rebuilding every card.
+                            if (nextFavorite) {
+                                libraryGrid.insertBefore(card, libraryGrid.firstElementChild);
+                            } else if (libraryFilter.value === 'favorites') {
+                                card.remove();
+                                if (libraryGrid.children.length === 0) {
+                                    libraryGrid.classList.add('hidden');
+                                    libraryEmpty.classList.remove('hidden');
+                                    libraryEmpty.querySelector('h3').textContent = 'Nothing here yet';
+                                    libraryEmpty.querySelector('p').textContent = 'No comics currently match this filter.';
+                                }
+                            } else {
+                                renderLibrary(false).catch(console.error);
+                                return;
+                            }
+                            showToast(nextFavorite ? 'Added to favorites' : 'Removed from favorites', 'success');
+                        } catch (error) {
+                            console.error(error);
+                            showError('Could not update that favorite.');
+                        }
+                    });
+                    cover.appendChild(favoriteButton);
 
                     const deleteButton = document.createElement('button');
                     deleteButton.className = 'comic-delete';
@@ -1725,15 +2307,15 @@
                             // This makes repeated deletions much faster for large libraries.
                             card.remove();
                             libraryComics = libraryComics.filter(item => item.id !== comic.id);
-                            libraryCount.textContent = `${libraryComics.length} comic${libraryComics.length === 1 ? '' : 's'}`;
+                            const remainingVisible = Array.from(libraryGrid.children).length;
+                            libraryCount.textContent = `${libraryComics.length} comic${libraryComics.length === 1 ? '' : 's'}${query || libraryFilter.value !== 'all' ? ` • ${remainingVisible} shown` : ''}`;
 
                             if (libraryGrid.children.length === 0) {
                                 const heading = libraryEmpty.querySelector('h3');
                                 const paragraph = libraryEmpty.querySelector('p');
-                                const query = librarySearch.value.trim().toLowerCase();
-                                if (query && libraryComics.length) {
-                                    heading.textContent = 'No comics found';
-                                    paragraph.textContent = `Nothing in your library matches “${query}”.`;
+                                if ((query || libraryFilter.value !== 'all') && libraryComics.length) {
+                                    heading.textContent = query ? 'No comics found' : 'Nothing here yet';
+                                    paragraph.textContent = query ? `Nothing in your library matches “${query}”.` : 'No comics currently match this filter.';
                                 } else {
                                     heading.textContent = 'Your library is empty';
                                     paragraph.textContent = 'Add a comic folder to build your personal library. Your comics are stored locally in this browser.';
@@ -1750,6 +2332,9 @@
                     });
                     cover.appendChild(deleteButton);
 
+                    const status = getComicStatus(comic);
+                    const progressPercent = comic.pageCount > 0 ? Math.min(100, Math.round(((comic.currentIndex || 0) / Math.max(1, comic.pageCount - 1)) * 100)) : 0;
+
                     const body = document.createElement('div');
                     body.className = 'comic-card-body';
 
@@ -1759,27 +2344,48 @@
 
                     const meta = document.createElement('div');
                     meta.className = 'comic-card-meta';
-                    meta.innerHTML = `<span>${formatLibraryDate(comic.lastRead)}</span><span>Page ${(comic.currentIndex || 0) + 1}</span>`;
+                    meta.innerHTML = `<span>${comic.pageCount} page${comic.pageCount === 1 ? '' : 's'}</span><span>${status === 'finished' ? 'Finished' : status === 'progress' ? `Page ${(comic.currentIndex || 0) + 1}` : 'Unread'}</span>`;
+
+                    const progress = document.createElement('div');
+                    progress.className = 'comic-progress';
+                    const progressFill = document.createElement('span');
+                    progressFill.style.width = `${progressPercent}%`;
+                    progress.appendChild(progressFill);
+
+                    const subMeta = document.createElement('div');
+                    subMeta.className = 'comic-card-submeta';
+                    subMeta.innerHTML = `<span>${formatLibraryDate(comic.lastRead)}</span><span>${progressPercent}%</span>`;
 
                     body.appendChild(title);
                     body.appendChild(meta);
+                    body.appendChild(progress);
+                    body.appendChild(subMeta);
                     card.appendChild(cover);
                     card.appendChild(body);
 
                     card.addEventListener('click', () => openComicFromLibrary(comic.id));
-                    libraryGrid.appendChild(card);
+                    fragment.appendChild(card);
+                    coverTargets.push({ img, comicId: comic.id });
+                }
 
+                // Paint the complete grid first. Cover lookups happen afterwards so a large
+                // library stays responsive instead of waiting for every cover to resolve.
+                libraryGrid.appendChild(fragment);
+
+                coverTargets.forEach(async ({ img, comicId }) => {
                     try {
-                        const firstPage = await dbRequest('pages', 'readonly', store => store.get(`${comic.id}:0`));
+                        const firstPage = await dbRequest('pages', 'readonly', store => store.get(`${comicId}:0`));
                         if (firstPage) {
                             const coverURL = makeCoverURL(firstPage.blob);
                             img.src = coverURL;
                             img.onload = () => URL.revokeObjectURL(coverURL);
+                            img.onerror = () => URL.revokeObjectURL(coverURL);
                         }
                     } catch (error) {
                         console.warn('Could not load library cover:', error);
                     }
-                }
+                });
+
                 if (updateStorage) await updateStorageUsage();
             }
 
@@ -2256,6 +2862,7 @@
 
             // ─── Exit reader ───
             function exitReader() {
+                closeGallery();
                 if (!isReading) return;
                 isReading = false;
                 // Invalidate any pending image load so its onerror/onload cannot affect the library view.
@@ -2291,6 +2898,55 @@
                 // Reset file input so the same folder can be uploaded again.
                 folderInput.value = '';
                 renderLibrary().catch(console.error);
+            }
+
+            // ─── Full gallery ───
+            function openGallery() {
+                if (!isReading || !images.length) return;
+
+                galleryGrid.innerHTML = '';
+                galleryTitle.textContent = `${folderName.textContent || 'Comic'} · ${images.length} pages`;
+
+                const fragment = document.createDocumentFragment();
+                const galleryURLs = [];
+
+                images.forEach((item, index) => {
+                    const cell = document.createElement('div');
+                    cell.className = 'gallery-page';
+
+                    const img = document.createElement('img');
+                    img.alt = `Page ${index + 1}`;
+                    img.loading = index < 8 ? 'eager' : 'lazy';
+                    img.decoding = 'async';
+                    const url = item.url || URL.createObjectURL(item.file);
+                    if (!item.url) item.url = url;
+                    galleryURLs.push({ url, owned: false });
+                    img.src = url;
+
+                    const pageNumber = document.createElement('span');
+                    pageNumber.className = 'gallery-page-number';
+                    pageNumber.textContent = index + 1;
+
+                    cell.appendChild(img);
+                    cell.appendChild(pageNumber);
+                    cell.addEventListener('click', () => {
+                        closeGallery();
+                        goTo(index);
+                    });
+                    fragment.appendChild(cell);
+                });
+
+                galleryGrid.appendChild(fragment);
+                galleryView.classList.add('active');
+                galleryView.setAttribute('aria-hidden', 'false');
+                document.body.style.overflow = 'hidden';
+            }
+
+            function closeGallery() {
+                galleryView.classList.remove('active');
+                galleryView.setAttribute('aria-hidden', 'true');
+                galleryGrid.innerHTML = '';
+                document.body.style.overflow = '';
             }
 
             // ─── Toggle thumbnails ───
@@ -2714,7 +3370,9 @@
                         toggleThumbnails();
                         break;
                     case 'Escape':
-                        if (document.fullscreenElement) {
+                        if (galleryView.classList.contains('active')) {
+                            closeGallery();
+                        } else if (document.fullscreenElement) {
                             document.exitFullscreen?.() || document.webkitExitFullscreen?.();
                         } else {
                             exitReader();
@@ -2793,6 +3451,14 @@
                 renderLibrary().catch(console.error);
             });
 
+            librarySort.addEventListener('change', () => {
+                renderLibrary(false).catch(console.error);
+            });
+
+            libraryFilter.addEventListener('change', () => {
+                renderLibrary(false).catch(console.error);
+            });
+
             // Folder input
             folderInput.addEventListener('change', (e) => {
                 if (e.target.files && e.target.files.length > 0) {
@@ -2820,6 +3486,13 @@
 
             // Toggle thumbnails
             toggleThumbs.addEventListener('click', toggleThumbnails);
+
+            // Gallery
+            galleryBtn.addEventListener('click', openGallery);
+            galleryClose.addEventListener('click', closeGallery);
+            galleryView.addEventListener('click', (e) => {
+                if (e.target === galleryView || e.target === document.getElementById('galleryScroll')) closeGallery();
+            });
 
             // Fullscreen
             fullscreenBtn.addEventListener('click', toggleFullscreen);
