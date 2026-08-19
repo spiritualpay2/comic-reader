@@ -1306,11 +1306,33 @@
         }
 
         .btn:hover {
-            transform: translateY(-1px);
+            transform: translateY(-2px) scale(1.015);
         }
         .btn:active {
-            transform: translateY(1px) scale(0.98);
+            transform: translateY(0) scale(0.965);
             transition-duration: 0.08s;
+        }
+
+        .btn-icon,
+        .upload-modal-close,
+        .reader-topbar .actions .btn-icon,
+        .library-select {
+            transition: transform .2s cubic-bezier(.2, .8, .2, 1), background .2s ease,
+                border-color .2s ease, color .2s ease, box-shadow .2s ease;
+        }
+
+        .btn-icon:hover,
+        .upload-modal-close:hover,
+        .reader-topbar .actions .btn-icon:hover,
+        .library-select:hover {
+            transform: translateY(-1px) scale(1.025);
+        }
+
+        .btn-icon:active,
+        .upload-modal-close:active,
+        .reader-topbar .actions .btn-icon:active,
+        .library-select:active {
+            transform: scale(0.95);
         }
 
         .library-topbar {
@@ -1432,17 +1454,18 @@
             transition: transform .24s cubic-bezier(.2, .8, .2, 1), border-color .24s ease, box-shadow .24s ease;
         }
         .comic-card:hover {
-            transform: translateY(-7px);
-            border-color: rgba(255, 255, 255, 0.14);
-            box-shadow: 0 20px 48px rgba(0, 0, 0, 0.32);
+            transform: translateY(-7px) scale(1.008);
+            border-color: rgba(255, 255, 255, 0.18);
+            box-shadow: 0 22px 52px rgba(0, 0, 0, 0.36);
         }
         .comic-card:not(.is-favorite) {
             border-color: rgba(46, 204, 113, 0.16);
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.14), 0 7px 24px rgba(46, 204, 113, 0.045);
         }
         .comic-card:not(.is-favorite):hover {
-            border-color: rgba(46, 204, 113, 0.28);
-            box-shadow: 0 20px 48px rgba(0, 0, 0, 0.32), 0 10px 30px rgba(46, 204, 113, 0.075);
+            border-color: rgba(46, 204, 113, 0.52);
+            box-shadow: 0 22px 52px rgba(0, 0, 0, 0.36), 0 0 28px rgba(46, 204, 113, 0.16),
+                0 10px 34px rgba(46, 204, 113, 0.10);
         }
         .comic-card.is-favorite {
             border-color: rgba(230, 190, 74, 0.28);
@@ -1451,8 +1474,9 @@
             z-index: 1;
         }
         .comic-card.is-favorite:hover {
-            border-color: rgba(230, 190, 74, 0.46);
-            box-shadow: 0 24px 56px rgba(0, 0, 0, 0.36), 0 12px 38px rgba(230, 190, 74, 0.14);
+            border-color: rgba(230, 190, 74, 0.70);
+            box-shadow: 0 24px 58px rgba(0, 0, 0, 0.38), 0 0 30px rgba(230, 190, 74, 0.20),
+                0 12px 40px rgba(230, 190, 74, 0.15);
             transform: translateY(-7px) scale(1.018);
         }
         .comic-cover {
@@ -1530,42 +1554,31 @@
             z-index: 3;
             opacity: 0;
             transform: translateY(-3px) scale(.94);
-            transition: opacity .18s ease, transform .18s ease, color .18s ease, border-color .18s ease,
-                background .18s ease, right .18s ease;
+            transition: opacity .2s ease, transform .26s cubic-bezier(.22, .9, .28, 1),
+                color .2s ease, border-color .2s ease, background .2s ease;
             display: flex;
             align-items: center;
             justify-content: center;
             font-size: 16px;
             line-height: 1;
+            will-change: transform, opacity;
         }
 
-        /* Default star position: off to the side (original) */
+        /* Favorite stays at the top-right and glides left to make room for delete. */
         .comic-favorite {
-            right: 48px;
+            right: 9px;
             font-size: 17px;
+            transition: opacity .2s ease, transform .32s cubic-bezier(.16, 1, .3, 1),
+                color .2s ease, border-color .2s ease, background .2s ease;
         }
 
-        /* Delete button stays at top-right corner */
+        .comic-card.is-favorite .comic-favorite {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+
         .comic-delete {
             right: 9px;
-        }
-
-        /* ─── When favorited, star sits at the top-right corner (overlapping the delete-button spot) ─── */
-        .comic-card.is-favorite .comic-favorite {
-            right: 9px;
-            opacity: 1;
-            transform: translateY(0) scale(1);
-        }
-
-        /* ─── On hover, star slides back to its original position (right: 48px) ─── */
-        .comic-card.is-favorite:hover .comic-favorite {
-            right: 48px;
-        }
-
-        /* ─── Show delete button on hover (at right: 9px) ─── */
-        .comic-card:hover .comic-delete {
-            opacity: 1;
-            transform: translateY(0) scale(1);
         }
 
         .comic-download {
@@ -1583,16 +1596,22 @@
             transform: translateY(0) scale(1);
         }
 
-        /* Hover states for buttons */
+        .comic-card:hover .comic-favorite {
+            transform: translate3d(-39px, 0, 0) scale(1);
+        }
+
+        /* Hover states for favorite/delete/download buttons. */
         .comic-favorite:hover {
             color: #e8c866;
             border-color: rgba(232, 200, 102, 0.48);
             background: rgba(48, 40, 18, 0.78);
         }
+
         .comic-favorite.active {
             color: #e8c866;
             text-shadow: 0 0 18px rgba(232, 200, 102, 0.4);
         }
+
         .comic-delete:hover {
             background: rgba(90, 20, 18, 0.78);
             border-color: rgba(231, 76, 60, 0.42);
@@ -1805,8 +1824,8 @@
                 opacity: 1;
                 transform: translateY(0) scale(1);
             }
-            .comic-card.is-favorite:hover .comic-favorite {
-                right: 9px;
+            .comic-card:hover .comic-favorite {
+                transform: none;
             }
         }
 
@@ -3094,6 +3113,150 @@
                 });
             }
 
+            // ─── Background transfer worker ───
+            // Keeps ZIP creation/parsing off the main UI thread. The worker processes
+            // one comic at a time so the browser can stay responsive even with large libraries.
+            const TRANSFER_WORKER_SOURCE = `
+                importScripts('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
+
+                let zip = null;
+
+                function post(type, payload = {}) {
+                    self.postMessage({ type, ...payload });
+                }
+
+                self.onmessage = async (event) => {
+                    const { type, ...payload } = event.data || {};
+                    try {
+                        if (type === 'backupStart') {
+                            zip = new JSZip();
+                            post('ready');
+                            return;
+                        }
+
+                        if (type === 'backupComic') {
+                            if (!zip) throw new Error('Backup worker is not initialized.');
+                            const folder = zip.folder(payload.name || 'Comic');
+                            for (const page of (payload.pages || [])) {
+                                folder.file(page.name || 'page.jpg', page.blob, { compression: 'STORE' });
+                            }
+                            post('comicAdded', {
+                                folderName: payload.name || 'Comic',
+                                pageCount: (payload.pages || []).length
+                            });
+                            return;
+                        }
+
+                        if (type === 'backupFinish') {
+                            if (!zip) throw new Error('Backup worker is not initialized.');
+                            let lastReport = 0;
+                            const blob = await zip.generateAsync({
+                                type: 'blob',
+                                compression: 'STORE',
+                                streamFiles: true,
+                                platform: 'UNIX'
+                            }, metadata => {
+                                const now = performance.now();
+                                if (now - lastReport > 100 || metadata.percent >= 100) {
+                                    lastReport = now;
+                                    post('zipProgress', {
+                                        percent: Math.max(0, Math.min(100, metadata.percent || 0)),
+                                        currentFile: metadata.currentFile || ''
+                                    });
+                                }
+                            });
+                            zip = null;
+                            post('backupDone', { blob });
+                            return;
+                        }
+
+                        if (type === 'restoreStart') {
+                            const zipFile = payload.file;
+                            const existingNames = new Set((payload.existingNames || []).map(name => String(name).toLowerCase()));
+                            const loaded = await JSZip.loadAsync(zipFile, {
+                                checkCRC32: false,
+                                createFolders: false
+                            });
+
+                            const entries = Object.values(loaded.files).filter(entry => !entry.dir);
+                            if (!entries.length) {
+                                post('restoreEmpty');
+                                return;
+                            }
+
+                            const comicEntries = new Map();
+                            for (const entry of entries) {
+                                const parts = entry.name.split('/').filter(Boolean);
+                                if (parts.length < 2) continue;
+                                const folderName = parts[0];
+                                const baseName = parts[parts.length - 1];
+                                if (!comicEntries.has(folderName)) comicEntries.set(folderName, []);
+                                comicEntries.get(folderName).push({ entry, name: baseName });
+                            }
+
+                            const newEntries = Array.from(comicEntries.entries())
+                                .filter(([folderName]) => !existingNames.has(folderName.toLowerCase()));
+
+                            if (!newEntries.length) {
+                                post('restoreNothingNew');
+                                return;
+                            }
+
+                            const totalPages = newEntries.reduce((sum, [, items]) => sum + items.length, 0);
+                            let restoredPages = 0;
+                            let lastPageReport = 0;
+
+                            for (const [folderName, items] of newEntries) {
+                                items.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' }));
+                                const files = [];
+
+                                for (const item of items) {
+                                    const blob = await item.entry.async('blob');
+                                    files.push({ name: item.name, blob });
+                                    restoredPages++;
+
+                                    const now = performance.now();
+                                    if (now - lastPageReport > 100 || restoredPages === totalPages) {
+                                        lastPageReport = now;
+                                        post('restoreProgress', {
+                                            restoredPages,
+                                            totalPages,
+                                            folderName
+                                        });
+                                    }
+                                }
+
+                                post('restoreComic', { folderName, files });
+                                await new Promise(resolve => {
+                                    const previousHandler = self.onmessage;
+                                    self.onmessage = function (ackEvent) {
+                                        if (ackEvent.data && ackEvent.data.type === 'restoreAck') {
+                                            self.onmessage = previousHandler;
+                                            resolve();
+                                            return;
+                                        }
+                                        previousHandler(ackEvent);
+                                    };
+                                });
+                            }
+
+                            post('restoreDone', { restoredPages, totalPages, added: newEntries.length });
+                        }
+                    } catch (error) {
+                        post('error', { message: error && error.message ? error.message : String(error) });
+                    }
+                };
+            `;
+
+            function createTransferWorker() {
+                if (typeof Worker !== 'function' || typeof Blob !== 'function' || typeof URL.createObjectURL !== 'function') return null;
+                const sourceBlob = new Blob([TRANSFER_WORKER_SOURCE], { type: 'application/javascript' });
+                const url = URL.createObjectURL(sourceBlob);
+                const worker = new Worker(url);
+                URL.revokeObjectURL(url);
+                return worker;
+            }
+
             // ─── Image loading ───
             function loadImage(index) {
                 if (!images.length || index < 0 || index >= images.length) return;
@@ -3568,6 +3731,7 @@
                 if (backupBtn.disabled) return;
 
                 let busy = false;
+                let worker = null;
                 try {
                     busy = true;
                     setTransferControlsDisabled(true);
@@ -3582,29 +3746,14 @@
                         `Reading ${comics.length} comic${comics.length === 1 ? '' : 's'} from local storage.`, 0);
                     await yieldToBrowser();
 
-                    const zip = new JSZip();
                     let totalPages = 0;
-                    let preparedPages = 0;
-
+                    const comicPageCounts = [];
                     for (const comic of comics) {
                         const pages = await getPageRecords(comic.id);
-                        if (!pages.length) continue;
-
-                        const folder = zip.folder(comic.name);
-                        for (const page of pages) {
-                            const fileName = page.name || `page_${page.index + 1}.jpg`;
-                            folder.file(fileName, page.blob, { compression: 'STORE' });
-                            totalPages++;
-                            preparedPages++;
-
-                            if (preparedPages % 50 === 0) {
-                                setTransferProgress(true, 'Preparing backup…',
-                                    `Added ${preparedPages.toLocaleString()} pages to the archive.`,
-                                    10 + (preparedPages / Math.max(1, totalPages || preparedPages)) * 5
-                                );
-                                await yieldToBrowser();
-                            }
-                        }
+                        const count = pages.length;
+                        comicPageCounts.push({ comic, pages, count });
+                        totalPages += count;
+                        await yieldToBrowser();
                     }
 
                     if (totalPages === 0) {
@@ -3612,25 +3761,86 @@
                         return;
                     }
 
+                    worker = createTransferWorker();
+                    if (!worker) throw new Error('Background transfer workers are not available.');
+
+                    let workerReady;
+                    let resolveReady;
+                    let rejectReady;
+                    workerReady = new Promise((resolve, reject) => {
+                        resolveReady = resolve;
+                        rejectReady = reject;
+                    });
+
+                    let backupDoneResolve;
+                    let backupDoneReject;
+                    const backupDone = new Promise((resolve, reject) => {
+                        backupDoneResolve = resolve;
+                        backupDoneReject = reject;
+                    });
+
+                    let comicAckResolve = null;
+                    let comicAckReject = null;
+                    let addedPages = 0;
+                    let currentComic = '';
+                    worker.onmessage = event => {
+                        const message = event.data || {};
+                        if (message.type === 'ready') {
+                            resolveReady();
+                        } else if (message.type === 'comicAdded') {
+                            addedPages += Number(message.pageCount) || 0;
+                            currentComic = message.folderName || '';
+                            if (comicAckResolve) {
+                                comicAckResolve(message);
+                                comicAckResolve = null;
+                                comicAckReject = null;
+                            }
+                        } else if (message.type === 'zipProgress') {
+                            const percent = 15 + (Math.max(0, Math.min(100, Number(message.percent) || 0)) * 0.84);
+                            const currentFile = message.currentFile ? ` • ${message.currentFile}` : '';
+                            setTransferProgress(true, 'Creating ZIP…',
+                                `Packaging ${totalPages.toLocaleString()} pages${currentComic ? ` • ${currentComic}` : ''}${currentFile}`,
+                                percent);
+                        } else if (message.type === 'backupDone') {
+                            backupDoneResolve(message.blob);
+                        } else if (message.type === 'error') {
+                            const error = new Error(message.message || 'Background backup failed.');
+                            if (comicAckReject) comicAckReject(error);
+                            rejectReady(error);
+                            backupDoneReject(error);
+                        }
+                    };
+
+                    worker.postMessage({ type: 'backupStart' });
+                    await workerReady;
+
+                    for (const { comic, pages, count } of comicPageCounts) {
+                        if (!count) continue;
+                        currentComic = comic.name;
+                        setTransferProgress(true, 'Preparing backup…',
+                            `${comic.name} • ${count.toLocaleString()} pages`,
+                            5 + (addedPages / totalPages) * 10);
+
+                        const comicAck = new Promise((resolve, reject) => {
+                            comicAckResolve = resolve;
+                            comicAckReject = reject;
+                        });
+
+                        worker.postMessage({
+                            type: 'backupComic',
+                            name: comic.name,
+                            pages: pages.map(page => ({
+                                name: page.name || `page_${page.index + 1}.jpg`,
+                                blob: page.blob
+                            }))
+                        });
+                        await comicAck;
+                    }
+
                     setTransferProgress(true, 'Creating ZIP…',
                         `Packaging ${totalPages.toLocaleString()} pages without recompressing image data.`, 15);
-                    await yieldToBrowser();
-
-                    const zipBlob = await zip.generateAsync({
-                        type: 'blob',
-                        compression: 'STORE',
-                        streamFiles: true,
-                        platform: 'UNIX'
-                    }, metadata => {
-                        const percent = 15 + (Math.max(0, Math.min(100, metadata.percent || 0)) * 0.83);
-                        const currentFile = metadata.currentFile ? ` • ${metadata.currentFile}` : '';
-                        setTransferProgress(
-                            true,
-                            'Creating ZIP…',
-                            `Processing ${totalPages.toLocaleString()} pages${currentFile}`,
-                            percent
-                        );
-                    });
+                    worker.postMessage({ type: 'backupFinish' });
+                    const zipBlob = await backupDone;
 
                     setTransferProgress(true, 'Starting download…',
                         'The backup is ready. Handing the ZIP to your browser…', 99);
@@ -3647,13 +3857,14 @@
 
                     setTransferProgress(true, 'Backup complete',
                         `${totalPages.toLocaleString()} pages are in the downloaded ZIP.`, 100);
-                    showToast(`Backup created with ${totalPages} pages.`, 'success');
+                    showToast(`Backup created with ${totalPages.toLocaleString()} pages.`, 'success');
                     setTimeout(() => setTransferProgress(false), 1800);
                 } catch (error) {
                     console.error('Backup failed:', error);
                     setTransferProgress(false);
                     showError('Backup failed. See console for details.');
                 } finally {
+                    if (worker) worker.terminate();
                     if (busy) setTransferControlsDisabled(false);
                 }
             });
@@ -3670,6 +3881,7 @@
                 restoreInput.value = '';
 
                 let busy = false;
+                let worker = null;
                 try {
                     busy = true;
                     setTransferControlsDisabled(true);
@@ -3677,78 +3889,79 @@
                         `Opening ${file.name} (${formatBytes(file.size)}).`, 0);
                     await yieldToBrowser();
 
-                    const zip = await JSZip.loadAsync(file, {
-                        checkCRC32: false,
-                        createFolders: false
+                    const existingComics = await getAllComics();
+                    const existingNames = existingComics.map(c => c.name);
+                    worker = createTransferWorker();
+                    if (!worker) throw new Error('Background transfer workers are not available.');
+
+                    let restoreDoneResolve;
+                    let restoreDoneReject;
+                    const restoreDone = new Promise((resolve, reject) => {
+                        restoreDoneResolve = resolve;
+                        restoreDoneReject = reject;
                     });
 
-                    const entries = Object.values(zip.files).filter(entry => !entry.dir);
-                    if (entries.length === 0) {
-                        showError('The backup contains no comic pages.');
-                        return;
-                    }
+                    let restoredPages = 0;
+                    let totalRestorePages = 0;
+                    let added = 0;
+                    let queue = Promise.resolve();
+                    let hasComic = false;
 
-                    const comicEntries = new Map();
-                    for (const entry of entries) {
-                        const parts = entry.name.split('/').filter(Boolean);
-                        if (parts.length < 2) continue;
+                    worker.onmessage = event => {
+                        const message = event.data || {};
+                        if (message.type === 'restoreProgress') {
+                            restoredPages = Number(message.restoredPages) || 0;
+                            totalRestorePages = Number(message.totalPages) || totalRestorePages;
+                            setTransferProgress(true, 'Restoring backup…',
+                                `${restoredPages.toLocaleString()} of ${totalRestorePages.toLocaleString()} pages • ${message.folderName || ''}`,
+                                totalRestorePages ? (restoredPages / totalRestorePages) * 90 : 0);
+                        } else if (message.type === 'restoreComic') {
+                            hasComic = true;
+                            queue = queue.then(async () => {
+                                const files = (message.files || []).map(item => ({
+                                    name: item.name,
+                                    file: item.blob,
+                                    url: null
+                                }));
+                                try {
+                                    await saveComicToLibrary(files, message.folderName);
+                                    added++;
+                                } catch (err) {
+                                    console.error(`Failed to restore comic ${message.folderName}:`, err);
+                                }
+                                worker.postMessage({ type: 'restoreAck' });
+                                await yieldToBrowser();
+                            });
+                        } else if (message.type === 'restoreDone') {
+                            restoredPages = Number(message.restoredPages) || restoredPages;
+                            totalRestorePages = Number(message.totalPages) || totalRestorePages;
+                            restoreDoneResolve();
+                        } else if (message.type === 'restoreEmpty') {
+                            restoreDoneReject(new Error('The backup contains no comic pages.'));
+                        } else if (message.type === 'restoreNothingNew') {
+                            restoreDoneResolve({ nothingNew: true });
+                        } else if (message.type === 'error') {
+                            restoreDoneReject(new Error(message.message || 'Background restore failed.'));
+                        }
+                    };
 
-                        const folderName = parts[0];
-                        const baseName = parts[parts.length - 1];
-                        if (!comicEntries.has(folderName)) comicEntries.set(folderName, []);
-                        comicEntries.get(folderName).push({ entry, name: baseName });
-                    }
+                    worker.postMessage({
+                        type: 'restoreStart',
+                        file,
+                        existingNames
+                    });
 
-                    if (comicEntries.size === 0) {
-                        showError('The backup does not contain valid comic folders.');
-                        return;
-                    }
-
-                    const existingComics = await getAllComics();
-                    const existingNames = new Set(existingComics.map(c => c.name.toLowerCase()));
-                    const newComicEntries = Array.from(comicEntries.entries())
-                        .filter(([folderName]) => !existingNames.has(folderName.toLowerCase()));
-
-                    if (newComicEntries.length === 0) {
+                    const result = await restoreDone;
+                    if (result && result.nothingNew) {
                         setTransferProgress(false);
                         showToast('No new comics to restore (all already in library).', 'success');
                         return;
                     }
 
-                    const totalRestorePages = newComicEntries.reduce((sum, [, items]) => sum + items.length, 0);
-                    let restoredPages = 0;
-                    let added = 0;
-
-                    for (const [folderName, items] of newComicEntries) {
-                        items.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true,
-                            sensitivity: 'base' }));
-
-                        const files = [];
-                        for (const item of items) {
-                            const blob = await item.entry.async('blob');
-                            files.push({ name: item.name, file: blob, url: null });
-                            restoredPages++;
-
-                            const percent = (restoredPages / totalRestorePages) * 90;
-                            setTransferProgress(
-                                true,
-                                'Restoring backup…',
-                                `${restoredPages.toLocaleString()} of ${totalRestorePages.toLocaleString()} pages • ${folderName}`,
-                                percent
-                            );
-
-                            if (restoredPages % 20 === 0) await yieldToBrowser();
-                        }
-
-                        try {
-                            await saveComicToLibrary(files, folderName);
-                            added++;
-                        } catch (err) {
-                            console.error(`Failed to restore comic ${folderName}:`, err);
-                        }
-
-                        files.length = 0;
-                        await yieldToBrowser();
+                    await queue;
+                    if (!hasComic && added === 0) {
+                        showError('The backup does not contain valid comic folders.');
+                        return;
                     }
 
                     setTransferProgress(true, 'Finishing restore…',
@@ -3764,8 +3977,11 @@
                 } catch (err) {
                     console.error('Restore failed:', err);
                     setTransferProgress(false);
-                    showError('Failed to restore backup. Ensure it\'s a valid comic backup zip.');
+                    showError(err && err.message === 'The backup contains no comic pages.'
+                        ? err.message
+                        : 'Failed to restore backup. Ensure it\'s a valid comic backup zip.');
                 } finally {
+                    if (worker) worker.terminate();
                     if (busy) setTransferControlsDisabled(false);
                 }
             });
@@ -4017,8 +4233,10 @@
                     twinkleAmount: random(0.16, 0.46),
                     twinkleSpeed: random(0.00055, 0.00125),
                     phase: Math.random() * Math.PI * 2,
-                    driftX: random(-0.010, 0.010),
-                    driftY: random(-0.006, 0.006)
+                    driftSpeed: random(0.00008, 0.00022),
+                    direction: random(0, Math.PI * 2),
+                    directionWobble: random(0.12, 0.32),
+                    directionSpeed: random(0.00005, 0.00014)
                 };
             }
 
@@ -4037,7 +4255,7 @@
                 canvas.style.height = height + 'px';
                 ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
                 rebuildStars();
-                draw(0, true);
+                draw(performance.now(), true);
             }
 
             function draw(time, force = false) {
@@ -4045,14 +4263,19 @@
                     animationFrame = requestAnimationFrame(draw);
                     return;
                 }
-                lastFrameTime = time;
 
+                const delta = lastFrameTime ? Math.min(100, time - lastFrameTime) : 16.7;
+                lastFrameTime = time;
                 ctx.clearRect(0, 0, width, height);
 
                 for (const star of stars) {
                     if (!force && !motionQuery.matches) {
-                        star.x += star.driftX;
-                        star.y += star.driftY;
+                        // Tiny, time-based drift with a gentle direction wobble — no physics simulation.
+                        const direction = star.direction +
+                            Math.sin(time * star.directionSpeed + star.phase) * star.directionWobble;
+                        const distance = star.driftSpeed * delta;
+                        star.x += Math.cos(direction) * distance;
+                        star.y += Math.sin(direction) * distance;
 
                         if (star.x < -2) star.x = width + 2;
                         else if (star.x > width + 2) star.x = -2;
