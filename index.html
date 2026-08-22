@@ -3120,53 +3120,236 @@
                 importScripts('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
 
                 let zip = null;
+                let db = null;
+                let backupFileHandle = null;
+                let backupAccessHandle = null;
+                let backupObjectURL = null;
+                const BACKUP_TEMP_NAME = 'comic-reader-large-backup.tmp';
 
                 function post(type, payload = {}) {
                     self.postMessage({ type, ...payload });
+                }
+
+                function openLibraryDB() {
+                    return new Promise((resolve, reject) => {
+                        const request = indexedDB.open('comic-reader-library', 1);
+                        request.onsuccess = () => {
+                            const database = request.result;
+                            database.onerror = () => {};
+                            resolve(database);
+                        };
+                        request.onerror = () => reject(request.error || new Error('Could not open the comic library.'));
+                    });
+                }
+
+                function getComicPages(comicId) {
+                    return new Promise((resolve, reject) => {
+                        if (!db) {
+                            reject(new Error('Library database is not ready.'));
+                            return;
+                        }
+                        const transaction = db.transaction('pages', 'readonly');
+                        const store = transaction.objectStore('pages');
+                        const index = store.index('comicId');
+                        const request = index.getAll(IDBKeyRange.only(comicId));
+                        request.onsuccess = () => {
+                            const pages = request.result || [];
+                            pages.sort((a, b) => a.index - b.index);
+                            resolve(pages);
+                        };
+                        request.onerror = () => reject(request.error || new Error('Could not read comic pages.'));
+                    });
+                }
+
+                async function removeOldBackupFile() {
+                    if (!navigator.storage || typeof navigator.storage.getDirectory !== 'function') return false;
+                    try {
+                        const root = await navigator.storage.getDirectory();
+                        await root.removeEntry(BACKUP_TEMP_NAME).catch(() => {});
+                        return true;
+                    } catch (_) {
+                        return false;
+                    }
+                }
+
+                async function prepareDiskBackup() {
+                    if (!navigator.storage || typeof navigator.storage.getDirectory !== 'function') return false;
+                    const root = await navigator.storage.getDirectory();
+                    const fileHandle = await root.getFileHandle(BACKUP_TEMP_NAME, { create: true });
+                    if (!fileHandle || typeof fileHandle.createSyncAccessHandle !== 'function') return false;
+                    backupFileHandle = fileHandle;
+                    backupAccessHandle = await fileHandle.createSyncAccessHandle();
+                    try {
+                        backupAccessHandle.truncate(0);
+                    } catch (_) {}
+                    return true;
+                }
+
+                function writeBufferFully(buffer, offset) {
+                    let written = 0;
+                    while (written < buffer.byteLength) {
+                        const count = backupAccessHandle.write(buffer.subarray(written), { at: offset + written });
+                        if (!count) throw new Error('The backup file could not be written.');
+                        written += count;
+                    }
+                    return written;
+                }
+
+                function closeBackupFile() {
+                    if (backupAccessHandle) {
+                        try { backupAccessHandle.flush(); } catch (_) {}
+                        try { backupAccessHandle.close(); } catch (_) {}
+                    }
+                    backupAccessHandle = null;
+                }
+
+                async function createDiskBackedBackup(totalSourceBytes, totalPages) {
+                    if (!await prepareDiskBackup()) return false;
+
+                    let written = 0;
+                    let lastReport = 0;
+                    let bytesSinceYield = 0;
+                    let processedPages = 0;
+
+                    const stream = zip.generateInternalStream({
+                        type: 'uint8array',
+                        streamFiles: true,
+                        compression: 'STORE',
+                        platform: 'UNIX'
+                    });
+
+                    await new Promise((resolve, reject) => {
+                        stream.on('data', async chunk => {
+                            stream.pause();
+                            try {
+                                const view = chunk instanceof Uint8Array ? chunk : new Uint8Array(chunk);
+                                written += writeBufferFully(view, written);
+                                bytesSinceYield += view.byteLength;
+
+                                const now = performance.now();
+                                if (now - lastReport > 120) {
+                                    lastReport = now;
+                                    const sourceRatio = totalSourceBytes > 0 ? written / totalSourceBytes : 0;
+                                    post('zipProgress', {
+                                        percent: Math.max(0, Math.min(99.5, sourceRatio * 99)),
+                                        currentFile: 'Writing backup to local disk',
+                                        writtenBytes: written
+                                    });
+                                }
+
+                                // Small pauses keep the worker cooperative with the browser/OS.
+                                if (bytesSinceYield >= 8 * 1024 * 1024) {
+                                    bytesSinceYield = 0;
+                                    await new Promise(resolveYield => setTimeout(resolveYield, 8));
+                                }
+                                stream.resume();
+                            } catch (error) {
+                                reject(error);
+                            }
+                        });
+                        stream.on('error', reject);
+                        stream.on('end', resolve);
+                        stream.resume();
+                    });
+
+                    closeBackupFile();
+
+                    const file = await backupFileHandle.getFile();
+                    post('backupDone', {
+                        file,
+                        fileSize: file.size,
+                        totalPages,
+                        diskBacked: true
+                    });
+                    return true;
+                }
+
+                async function createBlobBackedBackup(totalPages) {
+                    const blob = await zip.generateAsync({
+                        type: 'blob',
+                        compression: 'STORE',
+                        streamFiles: true,
+                        platform: 'UNIX'
+                    }, metadata => {
+                        post('zipProgress', {
+                            percent: Math.max(0, Math.min(99.5, Number(metadata.percent) || 0)),
+                            currentFile: metadata.currentFile || ''
+                        });
+                    });
+
+                    backupObjectURL = URL.createObjectURL(blob);
+                    post('backupDone', {
+                        url: backupObjectURL,
+                        fileSize: blob.size,
+                        totalPages,
+                        fallbackMemoryMode: true
+                    });
+                }
+
+                async function runBackup(comics) {
+                    if (!Array.isArray(comics) || !comics.length) {
+                        throw new Error('No comics were provided for backup.');
+                    }
+
+                    await removeOldBackupFile();
+                    db = await openLibraryDB();
+                    zip = new JSZip();
+
+                    let totalPages = comics.reduce((sum, comic) => sum + Math.max(0, Number(comic.pageCount) || 0), 0);
+                    let addedPages = 0;
+                    let totalSourceBytes = 0;
+
+                    // Read exactly one comic at a time. Nothing in the main page holds
+                    // the library's page Blobs during backup.
+                    for (const comic of comics) {
+                        const pages = await getComicPages(comic.id);
+                        const count = pages.length;
+                        if (!count) {
+                            await new Promise(resolve => setTimeout(resolve, 4));
+                            continue;
+                        }
+
+                        const folder = zip.folder(comic.name || 'Comic');
+                        let comicBytes = 0;
+                        for (const page of pages) {
+                            const blob = page.blob;
+                            if (blob) comicBytes += Number(blob.size) || 0;
+                            folder.file(page.name || ('page_' + (page.index + 1) + '.jpg'), blob, { compression: 'STORE' });
+                        }
+
+                        // Use the actual database contents for progress as we go.
+                        totalSourceBytes += comicBytes;
+                        addedPages += count;
+                        if (totalPages < addedPages) totalPages = addedPages;
+                        post('comicAdded', {
+                            folderName: comic.name || 'Comic',
+                            pageCount: count,
+                            addedPages,
+                            totalPages,
+                            comicBytes
+                        });
+
+                        // Release the current comic's page array before reading the next one.
+                        await new Promise(resolve => setTimeout(resolve, 8));
+                    }
+
+                    if (!addedPages) throw new Error('No pages found to backup.');
+
+                    // When the source byte total is still smaller than the real ZIP payload,
+                    // progress can safely use the page count as a fallback estimate.
+                    post('zipPhase', { totalPages, totalSourceBytes });
+
+                    const diskBacked = await createDiskBackedBackup(totalSourceBytes, totalPages);
+                    if (!diskBacked) {
+                        await createBlobBackedBackup(totalPages);
+                    }
                 }
 
                 self.onmessage = async (event) => {
                     const { type, ...payload } = event.data || {};
                     try {
                         if (type === 'backupStart') {
-                            zip = new JSZip();
-                            post('ready');
-                            return;
-                        }
-
-                        if (type === 'backupComic') {
-                            if (!zip) throw new Error('Backup worker is not initialized.');
-                            const folder = zip.folder(payload.name || 'Comic');
-                            for (const page of (payload.pages || [])) {
-                                folder.file(page.name || 'page.jpg', page.blob, { compression: 'STORE' });
-                            }
-                            post('comicAdded', {
-                                folderName: payload.name || 'Comic',
-                                pageCount: (payload.pages || []).length
-                            });
-                            return;
-                        }
-
-                        if (type === 'backupFinish') {
-                            if (!zip) throw new Error('Backup worker is not initialized.');
-                            let lastReport = 0;
-                            const blob = await zip.generateAsync({
-                                type: 'blob',
-                                compression: 'STORE',
-                                streamFiles: true,
-                                platform: 'UNIX'
-                            }, metadata => {
-                                const now = performance.now();
-                                if (now - lastReport > 100 || metadata.percent >= 100) {
-                                    lastReport = now;
-                                    post('zipProgress', {
-                                        percent: Math.max(0, Math.min(100, metadata.percent || 0)),
-                                        currentFile: metadata.currentFile || ''
-                                    });
-                                }
-                            });
-                            zip = null;
-                            post('backupDone', { blob });
+                            await runBackup(payload.comics || []);
                             return;
                         }
 
@@ -3224,9 +3407,15 @@
                                             folderName
                                         });
                                     }
+
+                                    // Give the browser a chance to breathe during very large restores.
+                                    if (restoredPages % 24 === 0) {
+                                        await new Promise(resolve => setTimeout(resolve, 4));
+                                    }
                                 }
 
                                 post('restoreComic', { folderName, files });
+
                                 await new Promise(resolve => {
                                     const previousHandler = self.onmessage;
                                     self.onmessage = function (ackEvent) {
@@ -3241,8 +3430,32 @@
                             }
 
                             post('restoreDone', { restoredPages, totalPages, added: newEntries.length });
+                            return;
+                        }
+
+                        if (type === 'backupRelease') {
+                            if (backupObjectURL) {
+                                try { URL.revokeObjectURL(backupObjectURL); } catch (_) {}
+                                backupObjectURL = null;
+                            }
+                            if (backupAccessHandle) closeBackupFile();
+                            if (backupFileHandle) {
+                                try {
+                                    const root = await navigator.storage.getDirectory();
+                                    await root.removeEntry(BACKUP_TEMP_NAME).catch(() => {});
+                                } catch (_) {}
+                            }
+                            backupFileHandle = null;
+                            if (db) {
+                                try { db.close(); } catch (_) {}
+                            }
+                            db = null;
+                            zip = null;
+                            post('backupReleased');
+                            return;
                         }
                     } catch (error) {
+                        closeBackupFile();
                         post('error', { message: error && error.message ? error.message : String(error) });
                     }
                 };
@@ -3732,6 +3945,8 @@
 
                 let busy = false;
                 let worker = null;
+                let cleanupScheduled = false;
+                let cleanupTimer = null;
                 try {
                     busy = true;
                     setTransferControlsDisabled(true);
@@ -3742,35 +3957,19 @@
                         return;
                     }
 
-                    setTransferProgress(true, 'Preparing backup…',
-                        `Reading ${comics.length} comic${comics.length === 1 ? '' : 's'} from local storage.`, 0);
-                    await yieldToBrowser();
-
-                    let totalPages = 0;
-                    const comicPageCounts = [];
-                    for (const comic of comics) {
-                        const pages = await getPageRecords(comic.id);
-                        const count = pages.length;
-                        comicPageCounts.push({ comic, pages, count });
-                        totalPages += count;
-                        await yieldToBrowser();
-                    }
-
+                    const totalPages = comics.reduce((sum, comic) =>
+                        sum + Math.max(0, Number(comic.pageCount) || 0), 0);
                     if (totalPages === 0) {
                         showToast('No pages found to backup.', 'error');
                         return;
                     }
 
+                    setTransferProgress(true, 'Preparing backup…',
+                        `Starting a low-memory backup of ${comics.length.toLocaleString()} comics (${totalPages.toLocaleString()} pages).`, 2);
+                    await yieldToBrowser();
+
                     worker = createTransferWorker();
                     if (!worker) throw new Error('Background transfer workers are not available.');
-
-                    let workerReady;
-                    let resolveReady;
-                    let rejectReady;
-                    workerReady = new Promise((resolve, reject) => {
-                        resolveReady = resolve;
-                        rejectReady = reject;
-                    });
 
                     let backupDoneResolve;
                     let backupDoneReject;
@@ -3779,93 +3978,101 @@
                         backupDoneReject = reject;
                     });
 
-                    let comicAckResolve = null;
-                    let comicAckReject = null;
                     let addedPages = 0;
                     let currentComic = '';
+                    let actualTotalPages = totalPages;
+
                     worker.onmessage = event => {
                         const message = event.data || {};
-                        if (message.type === 'ready') {
-                            resolveReady();
-                        } else if (message.type === 'comicAdded') {
-                            addedPages += Number(message.pageCount) || 0;
+                        if (message.type === 'comicAdded') {
+                            addedPages = Number(message.addedPages) || addedPages;
+                            actualTotalPages = Number(message.totalPages) || actualTotalPages;
                             currentComic = message.folderName || '';
-                            if (comicAckResolve) {
-                                comicAckResolve(message);
-                                comicAckResolve = null;
-                                comicAckReject = null;
-                            }
+                            setTransferProgress(true, 'Reading backup data…',
+                                `${currentComic} • ${Number(message.pageCount || 0).toLocaleString()} pages`,
+                                Math.min(14.5, 2 + (addedPages / Math.max(1, actualTotalPages)) * 12));
+                        } else if (message.type === 'zipPhase') {
+                            actualTotalPages = Number(message.totalPages) || actualTotalPages;
+                            setTransferProgress(true, 'Creating backup ZIP…',
+                                `Building ${actualTotalPages.toLocaleString()} pages without recompressing image data.`, 15);
                         } else if (message.type === 'zipProgress') {
-                            const percent = 15 + (Math.max(0, Math.min(100, Number(message.percent) || 0)) * 0.84);
+                            const rawPercent = Math.max(0, Math.min(99.5, Number(message.percent) || 0));
                             const currentFile = message.currentFile ? ` • ${message.currentFile}` : '';
-                            setTransferProgress(true, 'Creating ZIP…',
-                                `Packaging ${totalPages.toLocaleString()} pages${currentComic ? ` • ${currentComic}` : ''}${currentFile}`,
-                                percent);
+                            setTransferProgress(true, 'Creating backup ZIP…',
+                                `Writing ${actualTotalPages.toLocaleString()} pages${currentComic ? ` • ${currentComic}` : ''}${currentFile}`,
+                                15 + (rawPercent * 0.84));
                         } else if (message.type === 'backupDone') {
-                            backupDoneResolve(message.blob);
+                            backupDoneResolve(message);
                         } else if (message.type === 'error') {
-                            const error = new Error(message.message || 'Background backup failed.');
-                            if (comicAckReject) comicAckReject(error);
-                            rejectReady(error);
-                            backupDoneReject(error);
+                            backupDoneReject(new Error(message.message || 'Background backup failed.'));
+                        } else if (message.type === 'backupReleased') {
+                            if (cleanupTimer) clearTimeout(cleanupTimer);
+                            cleanupTimer = null;
+                            if (worker) {
+                                worker.terminate();
+                                worker = null;
+                            }
                         }
                     };
 
-                    worker.postMessage({ type: 'backupStart' });
-                    await workerReady;
-
-                    for (const { comic, pages, count } of comicPageCounts) {
-                        if (!count) continue;
-                        currentComic = comic.name;
-                        setTransferProgress(true, 'Preparing backup…',
-                            `${comic.name} • ${count.toLocaleString()} pages`,
-                            5 + (addedPages / totalPages) * 10);
-
-                        const comicAck = new Promise((resolve, reject) => {
-                            comicAckResolve = resolve;
-                            comicAckReject = reject;
-                        });
-
-                        worker.postMessage({
-                            type: 'backupComic',
+                    worker.postMessage({
+                        type: 'backupStart',
+                        comics: comics.map(comic => ({
+                            id: comic.id,
                             name: comic.name,
-                            pages: pages.map(page => ({
-                                name: page.name || `page_${page.index + 1}.jpg`,
-                                blob: page.blob
-                            }))
-                        });
-                        await comicAck;
-                    }
+                            pageCount: Math.max(0, Number(comic.pageCount) || 0)
+                        }))
+                    });
 
-                    setTransferProgress(true, 'Creating ZIP…',
-                        `Packaging ${totalPages.toLocaleString()} pages without recompressing image data.`, 15);
-                    worker.postMessage({ type: 'backupFinish' });
-                    const zipBlob = await backupDone;
-
+                    const result = await backupDone;
                     setTransferProgress(true, 'Starting download…',
-                        'The backup is ready. Handing the ZIP to your browser…', 99);
+                        `The backup is ready (${formatBytes(result.fileSize || 0)}). Starting the download without loading the ZIP into the page.`, 99);
                     await yieldToBrowser();
 
-                    const url = URL.createObjectURL(zipBlob);
+                    let url = result.url || null;
+                    let mainThreadDownloadURL = false;
+                    if (result.file instanceof Blob) {
+                        url = URL.createObjectURL(result.file);
+                        mainThreadDownloadURL = true;
+                    }
+                    if (!url) throw new Error('The backup file could not be prepared for download.');
                     const a = document.createElement('a');
                     a.href = url;
                     a.download = `comic-library-backup-${new Date().toISOString().slice(0,10)}.zip`;
+                    a.rel = 'noopener';
                     document.body.appendChild(a);
                     a.click();
                     document.body.removeChild(a);
-                    setTimeout(() => URL.revokeObjectURL(url), 10000);
+                    if (mainThreadDownloadURL) {
+                        setTimeout(() => URL.revokeObjectURL(url), 60000);
+                    }
 
                     setTransferProgress(true, 'Backup complete',
-                        `${totalPages.toLocaleString()} pages are in the downloaded ZIP.`, 100);
-                    showToast(`Backup created with ${totalPages.toLocaleString()} pages.`, 'success');
+                        `${Number(result.totalPages || actualTotalPages).toLocaleString()} pages are being downloaded.`, 100);
+                    showToast(`Backup created with ${Number(result.totalPages || actualTotalPages).toLocaleString()} pages.`, 'success');
+
+                    // Keep the worker/file alive long enough for Firefox to begin the download,
+                    // then explicitly remove the temporary OPFS file and object URL.
+                    cleanupScheduled = true;
+                    cleanupTimer = setTimeout(() => {
+                        if (worker) worker.postMessage({ type: 'backupRelease' });
+                    }, 30000);
                     setTimeout(() => setTransferProgress(false), 1800);
                 } catch (error) {
                     console.error('Backup failed:', error);
                     setTransferProgress(false);
                     showError('Backup failed. See console for details.');
                 } finally {
-                    if (worker) worker.terminate();
-                    if (busy) setTransferControlsDisabled(false);
+                    if (worker && !cleanupScheduled) {
+                        worker.terminate();
+                        worker = null;
+                    }
+                    if (busy && !cleanupScheduled) setTransferControlsDisabled(false);
+                    if (cleanupScheduled) {
+                        // Controls remain locked briefly so a second large transfer cannot
+                        // overlap the still-finishing download cleanup.
+                        setTimeout(() => setTransferControlsDisabled(false), 30000);
+                    }
                 }
             });
 
