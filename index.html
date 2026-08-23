@@ -1586,6 +1586,82 @@
             font-size: 16px;
         }
 
+        .comic-mark-read {
+            right: 9px;
+            bottom: 9px;
+            top: auto;
+            width: auto;
+            min-width: 62px;
+            height: 30px;
+            padding: 0 10px;
+            border-radius: 50px;
+            font-size: 12px;
+            font-weight: 600;
+            line-height: 1;
+            opacity: 1;
+            transform: none;
+            background: rgba(7, 7, 7, 0.72);
+            color: #fff;
+            border-color: rgba(255, 255, 255, 0.20);
+            white-space: nowrap;
+        }
+
+        .comic-card:hover .comic-mark-read,
+        .comic-mark-read:focus-visible {
+            opacity: 1;
+            transform: scale(1.04);
+        }
+
+        .comic-mark-read:hover {
+            background: rgba(20, 80, 50, 0.90);
+            border-color: rgba(46, 204, 113, 0.58);
+            color: #fff;
+        }
+
+        .comic-mark-read:active {
+            transform: scale(0.92);
+        }
+
+        .comic-mark-read.is-read {
+            color: #fff;
+            border-color: rgba(46, 204, 113, 0.50);
+            background: rgba(24, 92, 54, 0.82);
+        }
+
+        .comic-mark-read.is-read:hover {
+            background: rgba(28, 108, 62, 0.94);
+            color: #fff;
+        }
+
+
+        /* Ensure the Mark as Read control is always visible on the comic cover. */
+        .comic-cover .comic-mark-read {
+            position: absolute !important;
+            right: 10px !important;
+            bottom: 10px !important;
+            top: auto !important;
+            left: auto !important;
+            z-index: 20 !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: auto !important;
+            min-width: 62px !important;
+            height: 30px !important;
+            padding: 0 10px !important;
+            border-radius: 50px !important;
+            color: #fff !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+            pointer-events: auto !important;
+            transform: none !important;
+        }
+
+        .comic-cover .comic-mark-read.is-read {
+            opacity: 1 !important;
+            visibility: visible !important;
+        }
+
         .comic-card:hover .comic-favorite,
         .comic-card:hover .comic-delete,
         .comic-card:hover .comic-download,
@@ -1814,7 +1890,8 @@
         @media (hover: none) {
             .comic-favorite,
             .comic-delete,
-            .comic-download {
+            .comic-download,
+            .comic-mark-read {
                 opacity: 1;
                 transform: none;
             }
@@ -2313,6 +2390,33 @@
                 }
             }
 
+            async function markComicAsRead(comicId) {
+                if (!db || !comicId) throw new Error('No comic selected.');
+
+                const comic = await dbRequest('comics', 'readonly', store => store.get(comicId));
+                if (!comic) throw new Error('Comic not found.');
+
+                const pageCount = Math.max(0, Number(comic.pageCount) || 0);
+                if (pageCount === 0) throw new Error('This comic has no pages.');
+
+                comic.currentIndex = pageCount - 1;
+                comic.lastRead = Date.now();
+                await dbRequest('comics', 'readwrite', store => store.put(comic));
+                return comic;
+            }
+
+            async function markComicAsUnread(comicId) {
+                if (!db || !comicId) throw new Error('No comic selected.');
+
+                const comic = await dbRequest('comics', 'readonly', store => store.get(comicId));
+                if (!comic) throw new Error('Comic not found.');
+
+                comic.currentIndex = 0;
+                comic.lastRead = Date.now();
+                await dbRequest('comics', 'readwrite', store => store.put(comic));
+                return comic;
+            }
+
             async function deleteComicFromLibrary(comicId) {
                 return new Promise((resolve, reject) => {
                     const tx = db.transaction(['comics', 'pages'], 'readwrite');
@@ -2587,6 +2691,48 @@
                 img.decoding = 'async';
                 cover.appendChild(img);
 
+                // ── Mark as read button ──
+                const markReadButton = document.createElement('button');
+                markReadButton.className = 'comic-mark-read';
+                markReadButton.type = 'button';
+                markReadButton.textContent = getComicStatus(comic) === 'finished' ? '↶ Unread' : '✓ Read';
+                markReadButton.addEventListener('click', async (event) => {
+                    event.stopPropagation();
+                    const currentComic = card._comic;
+                    if (!currentComic) return;
+
+                    const isRead = getComicStatus(currentComic) === 'finished';
+
+                    try {
+                        const updatedComic = isRead
+                            ? await markComicAsUnread(currentComic.id)
+                            : await markComicAsRead(currentComic.id);
+
+                        currentComic.currentIndex = updatedComic.currentIndex;
+                        currentComic.lastRead = updatedComic.lastRead;
+
+                        const stored = libraryComics.find(item => item.id === currentComic.id);
+                        if (stored) {
+                            stored.currentIndex = updatedComic.currentIndex;
+                            stored.lastRead = updatedComic.lastRead;
+                        }
+
+                        updateLibraryCard(card, currentComic);
+
+                        if (libraryFilter.value === 'unread' || libraryFilter.value === 'progress' || libraryFilter.value === 'finished') {
+                            await renderLibrary(false, false);
+                        }
+
+                        showToast(isRead
+                            ? `Marked “${currentComic.name}” as unread.`
+                            : `Marked “${currentComic.name}” as read.`, 'success');
+                    } catch (error) {
+                        console.error('Could not update comic read status:', error);
+                        showError(error?.message || 'Could not update that comic.');
+                    }
+                });
+                cover.appendChild(markReadButton);
+
                 // ── Download button ──
                 const downloadButton = document.createElement('button');
                 downloadButton.className = 'comic-download';
@@ -2747,6 +2893,16 @@
                         img.dataset.comicId = comic.id;
                         observeLibraryCover(img, comic.id);
                     }
+                }
+
+                const markReadButton = card.querySelector('.comic-mark-read');
+                if (markReadButton) {
+                    const isRead = getComicStatus(comic) === 'finished';
+                    markReadButton.classList.toggle('is-read', isRead);
+                    markReadButton.textContent = isRead ? '↶ Unread' : '✓ Read';
+                    markReadButton.title = isRead ? 'Mark as unread and reset progress' : 'Mark as read';
+                    markReadButton.setAttribute('aria-label', markReadButton.title);
+                    markReadButton.setAttribute('aria-pressed', String(isRead));
                 }
 
                 const downloadButton = card.querySelector('.comic-download');
