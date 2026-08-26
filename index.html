@@ -3279,8 +3279,7 @@
                 let db = null;
                 let backupFileHandle = null;
                 let backupAccessHandle = null;
-                let backupObjectURL = null;
-                const BACKUP_TEMP_NAME = 'comic-reader-large-backup.tmp';
+                                const BACKUP_TEMP_NAME = 'comic-reader-large-backup.tmp';
 
                 function post(type, payload = {}) {
                     self.postMessage({ type, ...payload });
@@ -3298,7 +3297,7 @@
                     });
                 }
 
-                function getComicPages(comicId) {
+                function getComicPageKeys(comicId) {
                     return new Promise((resolve, reject) => {
                         if (!db) {
                             reject(new Error('Library database is not ready.'));
@@ -3307,190 +3306,246 @@
                         const transaction = db.transaction('pages', 'readonly');
                         const store = transaction.objectStore('pages');
                         const index = store.index('comicId');
-                        const request = index.getAll(IDBKeyRange.only(comicId));
-                        request.onsuccess = () => {
-                            const pages = request.result || [];
-                            pages.sort((a, b) => (a.index || 0) - (b.index || 0));
-                            resolve(pages);
-                        };
-                        request.onerror = () => reject(request.error || new Error('Could not read comic pages.'));
+                        const request = index.getAllKeys(IDBKeyRange.only(comicId));
+                        request.onsuccess = () => resolve(request.result || []);
+                        request.onerror = () => reject(request.error || new Error('Could not read comic page keys.'));
                     });
                 }
 
-                async function removeOldBackupFile() {
-                    if (!navigator.storage || typeof navigator.storage.getDirectory !== 'function') return false;
-                    try {
-                        const root = await navigator.storage.getDirectory();
-                        await root.removeEntry(BACKUP_TEMP_NAME).catch(() => {});
-                        return true;
-                    } catch (_) {
-                        return false;
+                function getPageByKey(key) {
+                    return new Promise((resolve, reject) => {
+                        if (!db) {
+                            reject(new Error('Library database is not ready.'));
+                            return;
+                        }
+                        const transaction = db.transaction('pages', 'readonly');
+                        const store = transaction.objectStore('pages');
+                        const request = store.get(key);
+                        request.onsuccess = () => resolve(request.result || null);
+                        request.onerror = () => reject(request.error || new Error('Could not read comic page.'));
+                    });
+                }
+
+                const textEncoder = new TextEncoder();
+                const ZIP_LOCAL_FILE_SIGNATURE = 0x04034b50;
+                const ZIP_DATA_DESCRIPTOR_SIGNATURE = 0x08074b50;
+                const ZIP_CENTRAL_DIRECTORY_SIGNATURE = 0x02014b50;
+                const ZIP_END_SIGNATURE = 0x06054b50;
+                const ZIP_VERSION = 20;
+                const ZIP_UTF8_FLAG = 0x0800;
+                const ZIP_MAX_UINT32 = 0xffffffff;
+                const BACKUP_CHUNK_SIZE = 1024 * 1024;
+
+                // CRC-32 table for ZIP data descriptors/central directory entries.
+                const CRC32_TABLE = (() => {
+                    const table = new Uint32Array(256);
+                    for (let n = 0; n < 256; n++) {
+                        let c = n;
+                        for (let k = 0; k < 8; k++) c = (c & 1) ? (0xedb88320 ^ (c >>> 1)) : (c >>> 1);
+                        table[n] = c >>> 0;
+                    }
+                    return table;
+                })();
+
+                function crc32Update(crc, bytes) {
+                    let c = crc >>> 0;
+                    for (let i = 0; i < bytes.length; i++) c = CRC32_TABLE[(c ^ bytes[i]) & 0xff] ^ (c >>> 8);
+                    return c >>> 0;
+                }
+
+                function writeU16(value) {
+                    const out = new Uint8Array(2);
+                    out[0] = value & 0xff;
+                    out[1] = (value >>> 8) & 0xff;
+                    return out;
+                }
+
+                function writeU32(value) {
+                    const out = new Uint8Array(4);
+                    const v = value >>> 0;
+                    out[0] = v & 0xff;
+                    out[1] = (v >>> 8) & 0xff;
+                    out[2] = (v >>> 16) & 0xff;
+                    out[3] = (v >>> 24) & 0xff;
+                    return out;
+                }
+
+                function makeLocalHeader(nameBytes) {
+                    // Bit 3 enables a data descriptor, so CRC and sizes do not have to be known
+                    // before the page bytes are streamed to disk.
+                    const header = new Uint8Array(30 + nameBytes.length);
+                    new DataView(header.buffer).setUint32(0, ZIP_LOCAL_FILE_SIGNATURE, true);
+                    new DataView(header.buffer).setUint16(4, ZIP_VERSION, true);
+                    new DataView(header.buffer).setUint16(6, ZIP_UTF8_FLAG | 0x0008, true);
+                    new DataView(header.buffer).setUint16(8, 0, true); // STORE
+                    new DataView(header.buffer).setUint16(10, 0, true); // time
+                    new DataView(header.buffer).setUint16(12, 0, true); // date
+                    // CRC and sizes are supplied in the descriptor after the file data.
+                    new DataView(header.buffer).setUint16(26, nameBytes.length, true);
+                    new DataView(header.buffer).setUint16(28, 0, true);
+                    header.set(nameBytes, 30);
+                    return header;
+                }
+
+                function makeDataDescriptor(crc, size) {
+                    const descriptor = new Uint8Array(16);
+                    const view = new DataView(descriptor.buffer);
+                    view.setUint32(0, ZIP_DATA_DESCRIPTOR_SIGNATURE, true);
+                    view.setUint32(4, crc >>> 0, true);
+                    view.setUint32(8, size >>> 0, true);
+                    view.setUint32(12, size >>> 0, true);
+                    return descriptor;
+                }
+
+                function makeCentralHeader(entry) {
+                    const nameBytes = entry.nameBytes;
+                    const header = new Uint8Array(46 + nameBytes.length);
+                    const view = new DataView(header.buffer);
+                    view.setUint32(0, ZIP_CENTRAL_DIRECTORY_SIGNATURE, true);
+                    view.setUint16(4, 20, true); // version made by
+                    view.setUint16(6, ZIP_VERSION, true);
+                    view.setUint16(8, ZIP_UTF8_FLAG | 0x0008, true);
+                    view.setUint16(10, 0, true); // STORE
+                    view.setUint16(12, 0, true);
+                    view.setUint16(14, 0, true);
+                    view.setUint32(16, entry.crc >>> 0, true);
+                    view.setUint32(20, entry.size >>> 0, true);
+                    view.setUint32(24, entry.size >>> 0, true);
+                    view.setUint16(28, nameBytes.length, true);
+                    view.setUint16(30, 0, true); // extra length
+                    view.setUint16(32, 0, true); // comment length
+                    view.setUint16(34, 0, true); // disk number
+                    view.setUint16(36, 0, true); // internal attributes
+                    view.setUint32(38, 0, true); // external attributes
+                    view.setUint32(42, entry.offset >>> 0, true);
+                    header.set(nameBytes, 46);
+                    return header;
+                }
+
+                function makeEndOfCentralDirectory(entryCount, centralSize, centralOffset) {
+                    const footer = new Uint8Array(22);
+                    const view = new DataView(footer.buffer);
+                    view.setUint32(0, ZIP_END_SIGNATURE, true);
+                    view.setUint16(4, 0, true);
+                    view.setUint16(6, 0, true);
+                    view.setUint16(8, entryCount, true);
+                    view.setUint16(10, entryCount, true);
+                    view.setUint32(12, centralSize >>> 0, true);
+                    view.setUint32(16, centralOffset >>> 0, true);
+                    view.setUint16(20, 0, true);
+                    return footer;
+                }
+
+                function normalizeZipPath(name) {
+                    return String(name || 'page.jpg')
+                        .replace(/\\/g, '/')
+                        .replace(/^\/+/, '')
+                        .split('/')
+                        .filter(part => part && part !== '.' && part !== '..')
+                        .join('/');
+                }
+
+                function joinZipPath(folder, fileName) {
+                    const safeFolder = normalizeZipPath(folder || 'Comic');
+                    const safeFile = normalizeZipPath(fileName || 'page.jpg');
+                    return safeFolder ? (safeFolder + '/' + safeFile) : safeFile;
+                }
+
+                function ensureZip32(nameBytes, size, offset) {
+                    if (nameBytes.length > 0xffff) throw new Error('A backup path is too long for ZIP format.');
+                    if (size > ZIP_MAX_UINT32 || offset > ZIP_MAX_UINT32) {
+                        throw new Error('This backup exceeds the current ZIP32 limit of 4 GB.');
                     }
                 }
 
-                async function prepareDiskBackup() {
-                    if (!navigator.storage || typeof navigator.storage.getDirectory !== 'function') return false;
-                    const root = await navigator.storage.getDirectory();
-                    const fileHandle = await root.getFileHandle(BACKUP_TEMP_NAME, { create: true });
-                    if (!fileHandle || typeof fileHandle.createSyncAccessHandle !== 'function') return false;
-                    backupFileHandle = fileHandle;
-                    backupAccessHandle = await fileHandle.createSyncAccessHandle();
-                    try { backupAccessHandle.truncate(0); } catch (_) {}
-                    return true;
+                async function writeBlobToBackup(blob, initialWritten) {
+                    if (!blob) return { written: initialWritten, crc: 0, size: 0 };
+                    let written = initialWritten;
+                    let crc = 0xffffffff;
+                    let offset = 0;
+                    while (offset < blob.size) {
+                        const end = Math.min(blob.size, offset + BACKUP_CHUNK_SIZE);
+                        const bytes = new Uint8Array(await blob.slice(offset, end).arrayBuffer());
+                        crc = crc32Update(crc, bytes);
+                        written += writeBufferFully(bytes, written);
+                        offset = end;
+
+                        const now = performance.now();
+                        if (now - backupProgressClock > 120) backupProgressClock = now;
+                        await new Promise(resolve => setTimeout(resolve, 0));
+                    }
+                    return {
+                        written,
+                        crc: (crc ^ 0xffffffff) >>> 0,
+                        size: blob.size,
+                    };
                 }
 
-                function writeBufferFully(buffer, offset) {
+                let backupProgressClock = 0;
+
+                async function createSequentialDiskBackedBackup(comics, totalPages) {
+                    if (!await prepareDiskBackup()) {
+                        throw new Error('Firefox does not expose the disk-backed storage needed for a low-memory large backup in this browser.');
+                    }
+
+                    const entries = [];
                     let written = 0;
-                    while (written < buffer.byteLength) {
-                        const count = backupAccessHandle.write(buffer.subarray(written), { at: offset + written });
-                        if (!count) throw new Error('The backup file could not be written.');
-                        written += count;
-                    }
-                    return written;
-                }
+                    let processedPages = 0;
+                    backupProgressClock = 0;
 
-                function closeBackupFile() {
-                    if (backupAccessHandle) {
-                        try { backupAccessHandle.flush(); } catch (_) {}
-                        try { backupAccessHandle.close(); } catch (_) {}
-                    }
-                    backupAccessHandle = null;
-                }
+                    post('zipPhase', { totalPages, totalSourceBytes: 0 });
 
-                async function createDiskBackedBackup(comics, totalPages) {
-                    if (!await prepareDiskBackup()) return false;
-
-                    zip = new JSZip();
-                    let written = 0;
-                    let lastReport = 0;
-                    let addedPages = 0;
-                    let totalSourceBytes = 0;
-
-                    // Only one comic's page records are materialized at a time. JSZip stores
-                    // the original Blob references rather than copying all image bytes into JS strings.
                     for (const comic of comics) {
-                        const pages = await getComicPages(comic.id);
-                        if (!pages.length) {
-                            await new Promise(resolve => setTimeout(resolve, 0));
-                            continue;
-                        }
+                        const pageKeys = await getComicPageKeys(comic.id);
+                        pageKeys.sort((a, b) => String(a).localeCompare(String(b), undefined, { numeric: true }));
 
-                        const folder = zip.folder(comic.name || 'Comic');
-                        let comicBytes = 0;
-                        for (const page of pages) {
+                        for (const pageKey of pageKeys) {
+                            const page = await getPageByKey(pageKey);
                             if (!page || !page.blob) continue;
-                            comicBytes += Number(page.blob.size) || 0;
-                            folder.file(
-                                page.name || ('page_' + String((page.index || 0) + 1).padStart(3, '0') + '.jpg'),
-                                page.blob,
-                                { compression: 'STORE' }
-                            );
-                            addedPages++;
-                        }
-                        totalSourceBytes += comicBytes;
-                        post('comicAdded', {
-                            folderName: comic.name || 'Comic',
-                            pageCount: pages.length,
-                            addedPages,
-                            totalPages,
-                            comicBytes
-                        });
 
-                        // Release the array's references before reading the next comic.
-                        pages.length = 0;
+                            const zipPath = joinZipPath(comic.name || 'Comic', page.name || ('page_' + String(page.index + 1).padStart(3, '0') + '.jpg'));
+                            const nameBytes = textEncoder.encode(zipPath);
+                            ensureZip32(nameBytes, page.blob.size, written);
+
+                            const entryOffset = written;
+                            written += writeBufferFully(makeLocalHeader(nameBytes), written);
+
+                            const result = await writeBlobToBackup(page.blob, written);
+                            written = result.written;
+                            written += writeBufferFully(makeDataDescriptor(result.crc, result.size), written);
+                            entries.push({ nameBytes, crc: result.crc, size: result.size, offset: entryOffset });
+
+                            processedPages++;
+                            const pagePercent = totalPages > 0 ? (processedPages / totalPages) * 99 : 0;
+                            post('zipProgress', {
+                                percent: Math.max(0, Math.min(99.5, pagePercent)),
+                                currentFile: zipPath,
+                                writtenBytes: written
+                            });
+                        }
+
                         await new Promise(resolve => setTimeout(resolve, 0));
                     }
 
-                    if (!addedPages) throw new Error('No pages found to backup.');
+                    if (!entries.length) throw new Error('No pages found to backup.');
+                    if (entries.length > 0xffff) throw new Error('This backup contains more than 65,535 files and needs ZIP64 support.');
 
-                    post('zipPhase', { totalPages, totalSourceBytes });
-
-                    // IMPORTANT: the stream's data callback is synchronous. The old version paused
-                    // JSZip and awaited between chunks, which can cause generated chunks to queue in
-                    // memory in Firefox. A synchronous disk write gives JSZip proper backpressure.
-                    const stream = zip.generateInternalStream({
-                        type: 'uint8array',
-                        streamFiles: true,
-                        compression: 'STORE',
-                        platform: 'UNIX'
-                    });
-
-                    await new Promise((resolve, reject) => {
-                        stream.on('data', chunk => {
-                            try {
-                                const view = chunk instanceof Uint8Array ? chunk : new Uint8Array(chunk);
-                                written += writeBufferFully(view, written);
-                                const now = performance.now();
-                                if (now - lastReport > 120) {
-                                    lastReport = now;
-                                    const rawPercent = totalSourceBytes > 0
-                                        ? Math.min(99.5, (written / totalSourceBytes) * 99)
-                                        : Math.min(99.5, (addedPages / Math.max(1, totalPages)) * 99);
-                                    post('zipProgress', {
-                                        percent: rawPercent,
-                                        currentFile: 'Writing backup to local disk',
-                                        writtenBytes: written
-                                    });
-                                }
-                            } catch (error) {
-                                try { stream.pause(); } catch (_) {}
-                                reject(error);
-                            }
-                        });
-                        stream.on('error', reject);
-                        stream.on('end', resolve);
-                        stream.resume();
-                    });
+                    const centralOffset = written;
+                    for (const entry of entries) {
+                        written += writeBufferFully(makeCentralHeader(entry), written);
+                    }
+                    const centralSize = written - centralOffset;
+                    written += writeBufferFully(makeEndOfCentralDirectory(entries.length, centralSize, centralOffset), written);
 
                     closeBackupFile();
-
                     const file = await backupFileHandle.getFile();
-                    backupObjectURL = URL.createObjectURL(file);
+                    // Return only the small OPFS file handle to the main document. The main
+                    // document creates the download File/URL after the archive is complete.
                     post('backupDone', {
-                        url: backupObjectURL,
+                        fileHandle: backupFileHandle,
                         fileSize: file.size,
                         totalPages,
                         diskBacked: true
-                    });
-                    return true;
-                }
-
-                async function createBlobBackedBackup(comics, totalPages) {
-                    // Last-resort fallback for browsers without OPFS sync access. This is kept for
-                    // compatibility, but large Firefox backups should use the disk-backed path above.
-                    zip = new JSZip();
-                    let addedPages = 0;
-                    for (const comic of comics) {
-                        const pages = await getComicPages(comic.id);
-                        const folder = zip.folder(comic.name || 'Comic');
-                        for (const page of pages) {
-                            if (!page || !page.blob) continue;
-                            folder.file(page.name || ('page_' + String((page.index || 0) + 1).padStart(3, '0') + '.jpg'), page.blob, { compression: 'STORE' });
-                            addedPages++;
-                        }
-                        pages.length = 0;
-                        await new Promise(resolve => setTimeout(resolve, 0));
-                    }
-                    if (!addedPages) throw new Error('No pages found to backup.');
-
-                    const blob = await zip.generateAsync({
-                        type: 'blob',
-                        compression: 'STORE',
-                        streamFiles: true,
-                        platform: 'UNIX'
-                    }, metadata => {
-                        post('zipProgress', {
-                            percent: Math.max(0, Math.min(99.5, Number(metadata.percent) || 0)),
-                            currentFile: metadata.currentFile || ''
-                        });
-                    });
-
-                    backupObjectURL = URL.createObjectURL(blob);
-                    post('backupDone', {
-                        url: backupObjectURL,
-                        fileSize: blob.size,
-                        totalPages,
-                        fallbackMemoryMode: true
                     });
                 }
 
@@ -3502,12 +3557,10 @@
                     await removeOldBackupFile();
                     db = await openLibraryDB();
 
-                    const totalPages = comics.reduce((sum, comic) =>
-                        sum + Math.max(0, Number(comic.pageCount) || 0), 0);
-                    if (totalPages <= 0) throw new Error('No pages found to backup.');
-
-                    const diskBacked = await createDiskBackedBackup(comics, totalPages);
-                    if (!diskBacked) await createBlobBackedBackup(comics, totalPages);
+                    const totalPages = comics.reduce((sum, comic) => sum + Math.max(0, Number(comic.pageCount) || 0), 0);
+                    // The backup is deliberately page-count driven here. Exact byte totals are not
+                    // worth a second full database read when the goal is minimum memory usage.
+                    await createSequentialDiskBackedBackup(comics, totalPages);
                 }
 
                 self.onmessage = async (event) => {
@@ -3515,27 +3568,6 @@
                     try {
                         if (type === 'backupStart') {
                             await runBackup(payload.comics || []);
-                            return;
-                        }
-
-                        if (type === 'backupRelease') {
-                            if (backupObjectURL) {
-                                try { URL.revokeObjectURL(backupObjectURL); } catch (_) {}
-                                backupObjectURL = null;
-                            }
-                            if (backupAccessHandle) closeBackupFile();
-                            if (backupFileHandle) {
-                                try {
-                                    const root = await navigator.storage.getDirectory();
-                                    await root.removeEntry(BACKUP_TEMP_NAME).catch(() => {});
-                                } catch (_) {}
-                            }
-                            backupFileHandle = null;
-                            if (db) {
-                                try { db.close(); } catch (_) {}
-                            }
-                            db = null;
-                            post('backupReleased');
                             return;
                         }
 
@@ -3616,6 +3648,23 @@
                             }
 
                             post('restoreDone', { restoredPages, totalPages, added: newEntries.length });
+                            return;
+                        }
+
+                        if (type === 'backupRelease') {
+                            if (backupAccessHandle) closeBackupFile();
+                            if (backupFileHandle) {
+                                try {
+                                    const root = await navigator.storage.getDirectory();
+                                    await root.removeEntry(BACKUP_TEMP_NAME).catch(() => {});
+                                } catch (_) {}
+                            }
+                            backupFileHandle = null;
+                            if (db) {
+                                try { db.close(); } catch (_) {}
+                            }
+                            db = null;
+                            post('backupReleased');
                             return;
                         }
                     } catch (error) {
@@ -4146,11 +4195,6 @@
                     let currentComic = '';
                     let actualTotalPages = totalPages;
 
-                    worker.onerror = event => {
-                        const message = event && (event.message || event.error);
-                        backupDoneReject(new Error(message || 'The backup worker stopped unexpectedly.'));
-                    };
-
                     worker.onmessage = event => {
                         const message = event.data || {};
                         if (message.type === 'comicAdded') {
@@ -4184,6 +4228,13 @@
                         }
                     };
 
+                    worker.onerror = event => {
+                        backupDoneReject(new Error(event && event.message ? event.message : 'The background backup worker stopped unexpectedly.'));
+                    };
+                    worker.onmessageerror = () => {
+                        backupDoneReject(new Error('Firefox could not receive the completed backup file from the worker.'));
+                    };
+
                     worker.postMessage({
                         type: 'backupStart',
                         comics: comics.map(comic => ({
@@ -4198,13 +4249,15 @@
                         `The backup is ready (${formatBytes(result.fileSize || 0)}). Starting the download without loading the ZIP into the page.`, 99);
                     await yieldToBrowser();
 
-                    let url = result.url || null;
-                    let mainThreadDownloadURL = false;
-                    if (result.file instanceof Blob) {
-                        url = URL.createObjectURL(result.file);
-                        mainThreadDownloadURL = true;
+                    // The worker only returns the small OPFS file handle. Read the completed
+                    // file from disk here and create the Blob URL in the document. This avoids
+                    // passing the multi-gigabyte File itself through postMessage.
+                    let backupFile = null;
+                    if (result.fileHandle && typeof result.fileHandle.getFile === 'function') {
+                        backupFile = await result.fileHandle.getFile();
                     }
-                    if (!url) throw new Error('The backup file could not be prepared for download.');
+                    if (!backupFile) throw new Error('The backup file could not be opened for download.');
+                    const url = URL.createObjectURL(backupFile);
                     const a = document.createElement('a');
                     a.href = url;
                     a.download = `comic-library-backup-${new Date().toISOString().slice(0,10)}.zip`;
@@ -4212,9 +4265,9 @@
                     document.body.appendChild(a);
                     a.click();
                     document.body.removeChild(a);
-                    if (mainThreadDownloadURL) {
-                        setTimeout(() => URL.revokeObjectURL(url), 60000);
-                    }
+                    // Keep the object URL alive while Firefox hands the large file to its
+                    // download subsystem. This does not load the file into a JS buffer.
+                    setTimeout(() => URL.revokeObjectURL(url), 120000);
 
                     setTransferProgress(true, 'Backup complete',
                         `${Number(result.totalPages || actualTotalPages).toLocaleString()} pages are being downloaded.`, 100);
