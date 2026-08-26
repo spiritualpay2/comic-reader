@@ -3538,14 +3538,14 @@
                     written += writeBufferFully(makeEndOfCentralDirectory(entries.length, centralSize, centralOffset), written);
 
                     closeBackupFile();
-                    const file = await backupFileHandle.getFile();
-                    // Return only the small OPFS file handle to the main document. The main
-                    // document creates the download File/URL after the archive is complete.
+                    // The main document can reopen this known OPFS file by name. Do not
+                    // transfer a FileSystemFileHandle across the worker boundary.
+                    const fileSize = written;
                     post('backupDone', {
-                        fileHandle: backupFileHandle,
-                        fileSize: file.size,
+                        fileSize,
                         totalPages,
-                        diskBacked: true
+                        diskBacked: true,
+                        backupFileName: BACKUP_TEMP_NAME
                     });
                 }
 
@@ -4249,14 +4249,16 @@
                         `The backup is ready (${formatBytes(result.fileSize || 0)}). Starting the download without loading the ZIP into the page.`, 99);
                     await yieldToBrowser();
 
-                    // The worker only returns the small OPFS file handle. Read the completed
-                    // file from disk here and create the Blob URL in the document. This avoids
-                    // passing the multi-gigabyte File itself through postMessage.
-                    let backupFile = null;
-                    if (result.fileHandle && typeof result.fileHandle.getFile === 'function') {
-                        backupFile = await result.fileHandle.getFile();
+                    // Reopen the completed temporary backup directly from OPFS in the
+                    // main document. The worker never transfers a filesystem handle.
+                    if (!navigator.storage || typeof navigator.storage.getDirectory !== 'function') {
+                        throw new Error('Firefox could not reopen the completed disk-backed backup.');
                     }
-                    if (!backupFile) throw new Error('The backup file could not be opened for download.');
+                    const root = await navigator.storage.getDirectory();
+                    const backupName = result.backupFileName || 'comic-reader-large-backup.tmp';
+                    const mainFileHandle = await root.getFileHandle(backupName, { create: false });
+                    const backupFile = await mainFileHandle.getFile();
+                    if (!backupFile || !backupFile.size) throw new Error('The backup file could not be opened for download.');
                     const url = URL.createObjectURL(backupFile);
                     const a = document.createElement('a');
                     a.href = url;
