@@ -3458,6 +3458,45 @@
                     }
                 }
 
+                async function removeOldBackupFile() {
+                    try {
+                        const root = await navigator.storage.getDirectory();
+                        await root.removeEntry(BACKUP_TEMP_NAME).catch(() => {});
+                    } catch (_) {
+                        // No OPFS root, or nothing to remove yet — safe to ignore.
+                    }
+                }
+
+                async function prepareDiskBackup() {
+                    try {
+                        if (!navigator.storage || typeof navigator.storage.getDirectory !== 'function') return false;
+                        const root = await navigator.storage.getDirectory();
+                        backupFileHandle = await root.getFileHandle(BACKUP_TEMP_NAME, { create: true });
+                        if (typeof backupFileHandle.createSyncAccessHandle !== 'function') return false;
+                        backupAccessHandle = await backupFileHandle.createSyncAccessHandle();
+                        backupAccessHandle.truncate(0);
+                        return true;
+                    } catch (_) {
+                        return false;
+                    }
+                }
+
+                function writeBufferFully(bytes, offset) {
+                    if (!backupAccessHandle) {
+                        throw new Error('The disk-backed backup file is not open for writing.');
+                    }
+                    backupAccessHandle.write(bytes, { at: offset });
+                    return bytes.length;
+                }
+
+                function closeBackupFile() {
+                    if (backupAccessHandle) {
+                        try { backupAccessHandle.flush(); } catch (_) {}
+                        try { backupAccessHandle.close(); } catch (_) {}
+                        backupAccessHandle = null;
+                    }
+                }
+
                 async function writeBlobToBackup(blob, initialWritten) {
                     if (!blob) return { written: initialWritten, crc: 0, size: 0 };
                     let written = initialWritten;
