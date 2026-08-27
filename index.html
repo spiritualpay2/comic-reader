@@ -3273,7 +3273,30 @@
             // Keeps ZIP creation/parsing off the main UI thread. The worker processes
             // one comic at a time so the browser can stay responsive even with large libraries.
             const TRANSFER_WORKER_SOURCE = `
-                importScripts('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
+                // JSZip is only needed for Restore (reading an existing ZIP). Backup writes
+                // its own ZIP by hand and never touches JSZip, so we load it lazily and only
+                // when restoring — that way a flaky CDN load can never break Backup, and a
+                // real failure to load it produces a clear, readable error instead of quietly
+                // crashing the whole worker.
+                let jszipLoadPromise = null;
+                function ensureJSZip() {
+                    if (typeof JSZip !== 'undefined') return Promise.resolve();
+                    if (!jszipLoadPromise) {
+                        jszipLoadPromise = new Promise((resolve, reject) => {
+                            try {
+                                importScripts('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
+                                if (typeof JSZip === 'undefined') {
+                                    reject(new Error('JSZip loaded but was not defined as expected.'));
+                                    return;
+                                }
+                                resolve();
+                            } catch (err) {
+                                reject(new Error('Could not load the ZIP library needed for Restore. Check your internet connection and try again.'));
+                            }
+                        });
+                    }
+                    return jszipLoadPromise;
+                }
 
                 let zip = null;
                 let db = null;
@@ -3611,6 +3634,7 @@
                         }
 
                         if (type === 'restoreStart') {
+                            await ensureJSZip();
                             const zipFile = payload.file;
                             const existingNames = new Set((payload.existingNames || []).map(name => String(name).toLowerCase()));
                             const loaded = await JSZip.loadAsync(zipFile, {
