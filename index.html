@@ -4215,7 +4215,7 @@
                 });
             }
 
-            // ─── Backup (OPFS + JSZip fallback) ───
+            // ─── Backup with fallback ───
             async function isOPFSSupported() {
                 try {
                     if (!navigator.storage || typeof navigator.storage.getDirectory !== 'function') return false;
@@ -4231,7 +4231,7 @@
                 }
             }
 
-            // Main-thread JSZip backup for browsers without OPFS support.
+            // Main-thread JSZip backup for browsers without OPFS support or if OPFS fails.
             async function backupWithJSZip(comics) {
                 const totalPages = comics.reduce((sum, comic) => sum + Math.max(0, Number(comic.pageCount) || 0), 0);
                 if (totalPages === 0) throw new Error('No pages found to backup.');
@@ -4300,13 +4300,84 @@
                 setTimeout(() => setTransferProgress(false), 1800);
             }
 
+            // OPFS-based backup using worker.
+            function performOPFSBackup(comics) {
+                return new Promise((resolve, reject) => {
+                    const worker = createTransferWorker();
+                    if (!worker) reject(new Error('Background transfer workers are not available.'));
+
+                    let backupDoneResolve;
+                    let backupDoneReject;
+                    const backupDone = new Promise((res, rej) => {
+                        backupDoneResolve = res;
+                        backupDoneReject = rej;
+                    });
+
+                    let actualTotalPages = comics.reduce((sum, c) => sum + Math.max(0, Number(c.pageCount) || 0), 0);
+                    let addedPages = 0;
+                    let currentComic = '';
+
+                    worker.onmessage = event => {
+                        const message = event.data || {};
+                        if (message.type === 'comicAdded') {
+                            addedPages = Number(message.addedPages) || addedPages;
+                            actualTotalPages = Number(message.totalPages) || actualTotalPages;
+                            currentComic = message.folderName || '';
+                            setTransferProgress(true, 'Reading backup data…',
+                                `${currentComic} • ${Number(message.pageCount || 0).toLocaleString()} pages`,
+                                Math.min(14.5, 2 + (addedPages / Math.max(1, actualTotalPages)) * 12));
+                        } else if (message.type === 'zipPhase') {
+                            actualTotalPages = Number(message.totalPages) || actualTotalPages;
+                            setTransferProgress(true, 'Creating backup ZIP…',
+                                `Building ${actualTotalPages.toLocaleString()} pages without recompressing image data.`, 15);
+                        } else if (message.type === 'zipProgress') {
+                            const rawPercent = Math.max(0, Math.min(99.5, Number(message.percent) || 0));
+                            const currentFile = message.currentFile ? ` • ${message.currentFile}` : '';
+                            setTransferProgress(true, 'Creating backup ZIP…',
+                                `Writing ${actualTotalPages.toLocaleString()} pages${currentComic ? ` • ${currentComic}` : ''}${currentFile}`,
+                                15 + (rawPercent * 0.84));
+                        } else if (message.type === 'backupDone') {
+                            backupDoneResolve(message);
+                        } else if (message.type === 'error') {
+                            backupDoneReject(new Error(message.message || 'Background backup failed.'));
+                        } else if (message.type === 'backupReleased') {
+                            worker.terminate();
+                        }
+                    };
+
+                    worker.onerror = event => {
+                        backupDoneReject(new Error(event && event.message ? event.message : 'The background backup worker stopped unexpectedly.'));
+                    };
+                    worker.onmessageerror = () => {
+                        backupDoneReject(new Error('Could not receive the completed backup file from the worker.'));
+                    };
+
+                    worker.postMessage({
+                        type: 'backupStart',
+                        comics: comics.map(comic => ({
+                            id: comic.id,
+                            name: comic.name,
+                            pageCount: Math.max(0, Number(comic.pageCount) || 0)
+                        }))
+                    });
+
+                    backupDone.then(result => {
+                        // Give the file system a moment to flush.
+                        return new Promise(resolve => setTimeout(resolve, 500)).then(() => ({
+                            ...result,
+                            _worker: worker
+                        }));
+                    }).then(resolve).catch(err => {
+                        worker.terminate();
+                        reject(err);
+                    });
+                });
+            }
+
             backupBtn.addEventListener('click', async () => {
                 if (backupBtn.disabled) return;
 
                 let busy = false;
-                let worker = null;
-                let cleanupScheduled = false;
-                let cleanupTimer = null;
                 try {
                     busy = true;
                     setTransferControlsDisabled(true);
@@ -4324,128 +4395,72 @@
                         return;
                     }
 
-                    // Check if OPFS is available.
-                    const opfsSupported = await isOPFSSupported();
+                    let opfsSupported = await isOPFSSupported();
+                    let usedOPFS = false;
+                    let backupFile = null;
+                    let fileSize = 0;
+                    let worker = null;
 
                     if (opfsSupported) {
-                        // Use the fast, low-memory OPFS-based backup.
-                        setTransferProgress(true, 'Preparing backup…',
-                            `Starting a low-memory backup of ${comics.length.toLocaleString()} comics (${totalPages.toLocaleString()} pages).`, 2);
-                        await yieldToBrowser();
+                        try {
+                            setTransferProgress(true, 'Preparing backup…',
+                                `Starting a low-memory backup of ${comics.length.toLocaleString()} comics (${totalPages.toLocaleString()} pages).`, 2);
+                            await yieldToBrowser();
 
-                        worker = createTransferWorker();
-                        if (!worker) throw new Error('Background transfer workers are not available.');
-
-                        let backupDoneResolve;
-                        let backupDoneReject;
-                        const backupDone = new Promise((resolve, reject) => {
-                            backupDoneResolve = resolve;
-                            backupDoneReject = reject;
-                        });
-
-                        let addedPages = 0;
-                        let currentComic = '';
-                        let actualTotalPages = totalPages;
-
-                        worker.onmessage = event => {
-                            const message = event.data || {};
-                            if (message.type === 'comicAdded') {
-                                addedPages = Number(message.addedPages) || addedPages;
-                                actualTotalPages = Number(message.totalPages) || actualTotalPages;
-                                currentComic = message.folderName || '';
-                                setTransferProgress(true, 'Reading backup data…',
-                                    `${currentComic} • ${Number(message.pageCount || 0).toLocaleString()} pages`,
-                                    Math.min(14.5, 2 + (addedPages / Math.max(1, actualTotalPages)) * 12));
-                            } else if (message.type === 'zipPhase') {
-                                actualTotalPages = Number(message.totalPages) || actualTotalPages;
-                                setTransferProgress(true, 'Creating backup ZIP…',
-                                    `Building ${actualTotalPages.toLocaleString()} pages without recompressing image data.`, 15);
-                            } else if (message.type === 'zipProgress') {
-                                const rawPercent = Math.max(0, Math.min(99.5, Number(message.percent) || 0));
-                                const currentFile = message.currentFile ? ` • ${message.currentFile}` : '';
-                                setTransferProgress(true, 'Creating backup ZIP…',
-                                    `Writing ${actualTotalPages.toLocaleString()} pages${currentComic ? ` • ${currentComic}` : ''}${currentFile}`,
-                                    15 + (rawPercent * 0.84));
-                            } else if (message.type === 'backupDone') {
-                                backupDoneResolve(message);
-                            } else if (message.type === 'error') {
-                                backupDoneReject(new Error(message.message || 'Background backup failed.'));
-                            } else if (message.type === 'backupReleased') {
-                                if (cleanupTimer) clearTimeout(cleanupTimer);
-                                cleanupTimer = null;
-                                if (worker) {
-                                    worker.terminate();
-                                    worker = null;
-                                }
-                            }
-                        };
-
-                        worker.onerror = event => {
-                            backupDoneReject(new Error(event && event.message ? event.message : 'The background backup worker stopped unexpectedly.'));
-                        };
-                        worker.onmessageerror = () => {
-                            backupDoneReject(new Error('Firefox could not receive the completed backup file from the worker.'));
-                        };
-
-                        worker.postMessage({
-                            type: 'backupStart',
-                            comics: comics.map(comic => ({
-                                id: comic.id,
-                                name: comic.name,
-                                pageCount: Math.max(0, Number(comic.pageCount) || 0)
-                            }))
-                        });
-
-                        const result = await backupDone;
-                        setTransferProgress(true, 'Starting download…',
-                            `The backup is ready (${formatBytes(result.fileSize || 0)}). Starting the download without loading the ZIP into the page.`, 99);
-                        await yieldToBrowser();
-
-                        // Reopen the completed temporary backup directly from OPFS in the main document.
-                        if (!navigator.storage || typeof navigator.storage.getDirectory !== 'function') {
-                            throw new Error('Firefox could not reopen the completed disk-backed backup.');
+                            const result = await performOPFSBackup(comics);
+                            const backupName = result.backupFileName || 'comic-reader-large-backup.tmp';
+                            const root = await navigator.storage.getDirectory();
+                            const mainFileHandle = await root.getFileHandle(backupName, { create: false });
+                            backupFile = await mainFileHandle.getFile();
+                            fileSize = backupFile.size || 0;
+                            usedOPFS = true;
+                            worker = result._worker;
+                        } catch (err) {
+                            console.warn('OPFS backup failed, falling back to JSZip:', err);
+                            opfsSupported = false; // fallback
                         }
-                        const root = await navigator.storage.getDirectory();
-                        const backupName = result.backupFileName || 'comic-reader-large-backup.tmp';
-                        const mainFileHandle = await root.getFileHandle(backupName, { create: false });
-                        const backupFile = await mainFileHandle.getFile();
-                        if (!backupFile || !backupFile.size) throw new Error('The backup file could not be opened for download.');
-                        const url = URL.createObjectURL(backupFile);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = `comic-library-backup-${new Date().toISOString().slice(0,10)}.zip`;
-                        a.rel = 'noopener';
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
-                        setTimeout(() => URL.revokeObjectURL(url), 120000);
-
-                        setTransferProgress(true, 'Backup complete',
-                            `${Number(result.totalPages || actualTotalPages).toLocaleString()} pages are being downloaded.`, 100);
-                        showToast(`Backup created with ${Number(result.totalPages || actualTotalPages).toLocaleString()} pages.`, 'success');
-
-                        cleanupScheduled = true;
-                        cleanupTimer = setTimeout(() => {
-                            if (worker) worker.postMessage({ type: 'backupRelease' });
-                        }, 30000);
-                        setTimeout(() => setTransferProgress(false), 1800);
-                    } else {
-                        // Fallback: JSZip in the main thread.
-                        await backupWithJSZip(comics);
                     }
+
+                    if (!opfsSupported) {
+                        await backupWithJSZip(comics);
+                        return;
+                    }
+
+                    if (!backupFile || !backupFile.size) {
+                        throw new Error('The backup file could not be opened for download.');
+                    }
+
+                    setTransferProgress(true, 'Starting download…',
+                        `The backup is ready (${formatBytes(fileSize)}). Starting the download without loading the ZIP into the page.`, 99);
+                    await yieldToBrowser();
+
+                    const url = URL.createObjectURL(backupFile);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `comic-library-backup-${new Date().toISOString().slice(0,10)}.zip`;
+                    a.rel = 'noopener';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    setTimeout(() => URL.revokeObjectURL(url), 120000);
+
+                    setTransferProgress(true, 'Backup complete',
+                        `${totalPages.toLocaleString()} pages are being downloaded.`, 100);
+                    showToast(`Backup created with ${totalPages.toLocaleString()} pages.`, 'success');
+
+                    // Release worker and clean up.
+                    if (worker) {
+                        worker.postMessage({ type: 'backupRelease' });
+                        setTimeout(() => worker.terminate(), 5000);
+                    }
+
+                    setTimeout(() => setTransferProgress(false), 1800);
                 } catch (error) {
                     console.error('Backup failed:', error);
                     setTransferProgress(false);
                     showError(error?.message || 'Backup failed. See console for details.');
                 } finally {
-                    if (worker && !cleanupScheduled) {
-                        worker.terminate();
-                        worker = null;
-                    }
-                    if (busy && !cleanupScheduled) setTransferControlsDisabled(false);
-                    if (cleanupScheduled) {
-                        setTimeout(() => setTransferControlsDisabled(false), 30000);
-                    }
+                    setTransferControlsDisabled(false);
                 }
             });
 
