@@ -3553,6 +3553,7 @@
                     const entries = [];
                     let written = 0;
                     let processedPages = 0;
+                    let lastZipProgressPost = 0;
                     backupProgressClock = 0;
 
                     post('zipPhase', { totalPages, totalSourceBytes: 0 });
@@ -3578,12 +3579,17 @@
                             entries.push({ nameBytes, crc: result.crc, size: result.size, offset: entryOffset });
 
                             processedPages++;
-                            const pagePercent = totalPages > 0 ? (processedPages / totalPages) * 99 : 0;
-                            post('zipProgress', {
-                                percent: Math.max(0, Math.min(99.5, pagePercent)),
-                                currentFile: zipPath,
-                                writtenBytes: written
-                            });
+                            const now = performance.now();
+                            // Throttle UI messages for large libraries, avoiding thousands of DOM updates.
+                            if (processedPages === totalPages || now - lastZipProgressPost >= 120) {
+                                lastZipProgressPost = now;
+                                const pagePercent = totalPages > 0 ? (processedPages / totalPages) * 99 : 0;
+                                post('zipProgress', {
+                                    percent: Math.max(0, Math.min(99.5, pagePercent)),
+                                    currentFile: zipPath,
+                                    writtenBytes: written
+                                });
+                            }
                         }
 
                         await new Promise(resolve => setTimeout(resolve, 0));
@@ -4217,16 +4223,21 @@
 
             // ─── Backup with fallback ───
             async function isOPFSSupported() {
+                // createSyncAccessHandle() is a worker-only API in browsers such as Firefox.
+                // Testing for it on the main thread incorrectly rejects OPFS and sends large
+                // libraries through the memory-heavy JSZip fallback. Test OPFS availability
+                // here; the dedicated worker performs the actual write-capability check.
+                let root = null;
                 try {
                     if (!navigator.storage || typeof navigator.storage.getDirectory !== 'function') return false;
-                    const root = await navigator.storage.getDirectory();
-                    const handle = await root.getFileHandle('opfs-test.tmp', { create: true });
-                    if (typeof handle.createSyncAccessHandle !== 'function') return false;
-                    const access = await handle.createSyncAccessHandle();
-                    access.close();
-                    await root.removeEntry('opfs-test.tmp').catch(() => {});
+                    root = await navigator.storage.getDirectory();
+                    const testName = 'comic-reader-opfs-test.tmp';
+                    const handle = await root.getFileHandle(testName, { create: true });
+                    await handle.getFile();
+                    await root.removeEntry(testName).catch(() => {});
                     return true;
                 } catch (_) {
+                    if (root) await root.removeEntry('comic-reader-opfs-test.tmp').catch(() => {});
                     return false;
                 }
             }
@@ -4304,7 +4315,10 @@
             function performOPFSBackup(comics) {
                 return new Promise((resolve, reject) => {
                     const worker = createTransferWorker();
-                    if (!worker) reject(new Error('Background transfer workers are not available.'));
+                    if (!worker) {
+                        reject(new Error('Background transfer workers are not available in this browser.'));
+                        return;
+                    }
 
                     let backupDoneResolve;
                     let backupDoneReject;
@@ -4416,12 +4430,21 @@
                             usedOPFS = true;
                             worker = result._worker;
                         } catch (err) {
-                            console.warn('OPFS backup failed, falling back to JSZip:', err);
-                            opfsSupported = false; // fallback
+                            console.warn('Background OPFS backup failed:', err);
+                            // JSZip on the main thread retains page Blobs and builds a second
+                            // large ZIP Blob in memory. Keep that fallback only for small libraries.
+                            if (totalPages <= 300) {
+                                opfsSupported = false;
+                            } else {
+                                throw new Error('The low-memory background backup could not finish. Your library has not been changed. The memory-heavy fallback was skipped to avoid freezing the browser. Please retry in Firefox after closing other large tabs.');
+                            }
                         }
                     }
 
                     if (!opfsSupported) {
+                        if (totalPages > 300) {
+                            throw new Error('This library is too large for the memory-based backup fallback. The background disk-backed backup is required, but this browser could not start it. Your comics are safe and unchanged.');
+                        }
                         await backupWithJSZip(comics);
                         return;
                     }
