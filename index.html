@@ -4497,15 +4497,15 @@
                         `${totalPages.toLocaleString()} pages have been packed into a ZIP. Click the button below to save it to your Mac.`, 100);
                     showToast('Backup is ready. Click Download backup ZIP in the progress panel.', 'success');
 
-                    // The File snapshot is already held by the page, so the worker can
-                    // release the temporary OPFS file without invalidating the download Blob.
-                    if (worker) {
-                        worker.postMessage({ type: 'backupRelease' });
-                        setTimeout(() => worker.terminate(), 5000);
-                    }
-                    // Keep the URL alive for several minutes so the user can click the link.
+                    // Keep the worker and temporary OPFS file alive until the download link
+                    // expires. Firefox may invalidate an OPFS-backed File URL if its source
+                    // file is removed before the user clicks the link.
                     setTimeout(() => {
                         if (currentBackupDownloadURL === transferDownloadLink.href) {
+                            if (worker) {
+                                try { worker.postMessage({ type: 'backupRelease' }); } catch (_) {}
+                                setTimeout(() => { try { worker.terminate(); } catch (_) {} }, 5000);
+                            }
                             URL.revokeObjectURL(currentBackupDownloadURL);
                             currentBackupDownloadURL = null;
                             transferDownloadLink.removeAttribute('href');
