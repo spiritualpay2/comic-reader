@@ -3294,29 +3294,68 @@
             // Keeps ZIP creation/parsing off the main UI thread. The worker processes
             // one comic at a time so the browser can stay responsive even with large libraries.
             const TRANSFER_WORKER_SOURCE = `
-                // JSZip is only needed for Restore (reading an existing ZIP). Backup writes
-                // its own ZIP by hand and never touches JSZip, so we load it lazily and only
-                // when restoring — that way a flaky CDN load can never break Backup, and a
-                // real failure to load it produces a clear, readable error instead of quietly
-                // crashing the whole worker.
-                let jszipLoadPromise = null;
-                function ensureJSZip() {
-                    if (typeof JSZip !== 'undefined') return Promise.resolve();
-                    if (!jszipLoadPromise) {
-                        jszipLoadPromise = new Promise((resolve, reject) => {
-                            try {
-                                importScripts('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
-                                if (typeof JSZip === 'undefined') {
-                                    reject(new Error('JSZip loaded but was not defined as expected.'));
-                                    return;
-                                }
-                                resolve();
-                            } catch (err) {
-                                reject(new Error('Could not load the ZIP library needed for Restore. Check your internet connection and try again.'));
-                            }
-                        });
+                // The backup writer stores page files without compression. Restore reads the
+                // ZIP central directory and creates Blob slices for each page, instead of asking
+                // JSZip to load a multi-gigabyte archive into memory.
+                async function readStoredZipEntries(zipFile) {
+                    const tailLength = Math.min(zipFile.size, 65557);
+                    const tailStart = zipFile.size - tailLength;
+                    const tail = new Uint8Array(await zipFile.slice(tailStart).arrayBuffer());
+                    const tailView = new DataView(tail.buffer, tail.byteOffset, tail.byteLength);
+                    let eocd = -1;
+                    for (let i = tail.length - 22; i >= 0; i--) {
+                        if (tailView.getUint32(i, true) === 0x06054b50) { eocd = i; break; }
                     }
-                    return jszipLoadPromise;
+                    if (eocd < 0) throw new Error('This ZIP is missing its end-of-directory record. It may be incomplete or damaged.');
+                    const diskNumber = tailView.getUint16(eocd + 4, true);
+                    const centralDisk = tailView.getUint16(eocd + 6, true);
+                    const diskEntries = tailView.getUint16(eocd + 8, true);
+                    const totalEntries = tailView.getUint16(eocd + 10, true);
+                    const centralSize = tailView.getUint32(eocd + 12, true);
+                    const centralOffset = tailView.getUint32(eocd + 16, true);
+                    if (diskNumber !== 0 || centralDisk !== 0 || diskEntries !== totalEntries || totalEntries === 0xffff || centralOffset === 0xffffffff || centralSize === 0xffffffff) {
+                        throw new Error('This ZIP uses a multi-disk or ZIP64 layout that this restore reader does not support.');
+                    }
+                    if (centralOffset + centralSize > zipFile.size) throw new Error('The ZIP directory points outside the file. The archive may be damaged.');
+                    const central = new Uint8Array(await zipFile.slice(centralOffset, centralOffset + centralSize).arrayBuffer());
+                    const view = new DataView(central.buffer, central.byteOffset, central.byteLength);
+                    const decoder = new TextDecoder('utf-8');
+                    const entries = [];
+                    let offset = 0;
+                    for (let index = 0; index < totalEntries; index++) {
+                        if (offset + 46 > central.length || view.getUint32(offset, true) !== 0x02014b50) {
+                            throw new Error('The ZIP central directory is invalid or incomplete.');
+                        }
+                        const flags = view.getUint16(offset + 8, true);
+                        const method = view.getUint16(offset + 10, true);
+                        const compressedSize = view.getUint32(offset + 20, true);
+                        const uncompressedSize = view.getUint32(offset + 24, true);
+                        const nameLength = view.getUint16(offset + 28, true);
+                        const extraLength = view.getUint16(offset + 30, true);
+                        const commentLength = view.getUint16(offset + 32, true);
+                        const localOffset = view.getUint32(offset + 42, true);
+                        const recordEnd = offset + 46 + nameLength + extraLength + commentLength;
+                        if (recordEnd > central.length) throw new Error('A ZIP directory entry is truncated.');
+                        const nameBytes = central.slice(offset + 46, offset + 46 + nameLength);
+                        const name = decoder.decode(nameBytes);
+                        if (!(flags & 0x0800) && nameBytes.some(byte => byte > 0x7f)) {
+                            // The reader writes UTF-8 names; keep a helpful error for foreign encodings.
+                            throw new Error('This ZIP contains filenames in an unsupported text encoding.');
+                        }
+                        if (method !== 0) throw new Error('This ZIP contains compressed entries. Please use the original unmodified backup ZIP.');
+                        if (compressedSize !== uncompressedSize) throw new Error('A ZIP entry has inconsistent size information.');
+                        if (localOffset + 30 > zipFile.size) throw new Error('A ZIP page entry points outside the file.');
+                        const localHeader = new DataView(await zipFile.slice(localOffset, localOffset + 30).arrayBuffer());
+                        if (localHeader.getUint32(0, true) !== 0x04034b50) throw new Error('A ZIP page header is invalid.');
+                        const localNameLength = localHeader.getUint16(26, true);
+                        const localExtraLength = localHeader.getUint16(28, true);
+                        const dataStart = localOffset + 30 + localNameLength + localExtraLength;
+                        const dataEnd = dataStart + compressedSize;
+                        if (dataEnd > centralOffset) throw new Error('A ZIP page extends into the directory and the archive may be damaged.');
+                        if (!name.endsWith('/')) entries.push({ name, blob: zipFile.slice(dataStart, dataEnd) });
+                        offset = recordEnd;
+                    }
+                    return entries;
                 }
 
                 let zip = null;
@@ -3661,15 +3700,12 @@
                         }
 
                         if (type === 'restoreStart') {
-                            await ensureJSZip();
                             const zipFile = payload.file;
+                            if (!zipFile || !Number.isFinite(zipFile.size) || zipFile.size < 22) {
+                                throw new Error('The selected file is empty or is not a ZIP backup.');
+                            }
                             const existingNames = new Set((payload.existingNames || []).map(name => String(name).toLowerCase()));
-                            const loaded = await JSZip.loadAsync(zipFile, {
-                                checkCRC32: false,
-                                createFolders: false
-                            });
-
-                            const entries = Object.values(loaded.files).filter(entry => !entry.dir);
+                            const entries = await readStoredZipEntries(zipFile);
                             if (!entries.length) {
                                 post('restoreEmpty');
                                 return;
@@ -3682,7 +3718,7 @@
                                 const folderName = parts[0];
                                 const baseName = parts[parts.length - 1];
                                 if (!comicEntries.has(folderName)) comicEntries.set(folderName, []);
-                                comicEntries.get(folderName).push({ entry, name: baseName });
+                                comicEntries.get(folderName).push({ blob: entry.blob, name: baseName });
                             }
 
                             const newEntries = Array.from(comicEntries.entries())
@@ -3702,28 +3738,18 @@
                                 const files = [];
 
                                 for (const item of items) {
-                                    const blob = await item.entry.async('blob');
-                                    files.push({ name: item.name, blob });
+                                    files.push({ name: item.name, blob: item.blob });
                                     restoredPages++;
 
                                     const now = performance.now();
                                     if (now - lastPageReport > 100 || restoredPages === totalPages) {
                                         lastPageReport = now;
-                                        post('restoreProgress', {
-                                            restoredPages,
-                                            totalPages,
-                                            folderName
-                                        });
+                                        post('restoreProgress', { restoredPages, totalPages, folderName });
                                     }
-
-                                    // Give the browser a chance to breathe during very large restores.
-                                    if (restoredPages % 24 === 0) {
-                                        await new Promise(resolve => setTimeout(resolve, 4));
-                                    }
+                                    if (restoredPages % 24 === 0) await new Promise(resolve => setTimeout(resolve, 4));
                                 }
 
                                 post('restoreComic', { folderName, files });
-
                                 await new Promise(resolve => {
                                     const previousHandler = self.onmessage;
                                     self.onmessage = function (ackEvent) {
@@ -3736,7 +3762,6 @@
                                     };
                                 });
                             }
-
                             post('restoreDone', { restoredPages, totalPages, added: newEntries.length });
                             return;
                         }
