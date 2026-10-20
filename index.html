@@ -787,6 +787,41 @@
         .transfer-progress.hidden {
             display: none;
         }
+        .transfer-progress-actions {
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        .transfer-progress-action {
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 7px 11px;
+            background: var(--bg-surface);
+            color: var(--text-primary);
+            font: inherit;
+            font-size: 12px;
+            cursor: pointer;
+        }
+        .transfer-progress-action:hover { background: var(--bg-surface-hover); }
+        .transfer-progress-action.cancel { color: #ff9b91; border-color: rgba(231,76,60,.4); }
+        .transfer-reopen {
+            display: none;
+            position: fixed;
+            right: 18px;
+            bottom: 18px;
+            z-index: 499;
+            border: 1px solid var(--border-color);
+            border-radius: 999px;
+            padding: 10px 15px;
+            background: rgba(20,20,20,.96);
+            color: var(--text-primary);
+            font: inherit;
+            font-size: 13px;
+            cursor: pointer;
+            box-shadow: 0 8px 24px rgba(0,0,0,.35);
+        }
         .transfer-progress-head {
             display: flex;
             align-items: center;
@@ -1104,21 +1139,35 @@
 
         .upload-modal-close {
             position: absolute;
+            z-index: 5;
             top: 14px;
             right: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
             width: 38px;
+            min-width: 38px;
             height: 38px;
+            padding: 0;
+            line-height: 1;
             border: 0;
             border-radius: 50%;
             background: var(--bg-surface);
             color: var(--text-secondary);
             cursor: pointer;
             font-size: 18px;
+            pointer-events: auto;
+            touch-action: manipulation;
         }
 
         .upload-modal-close:hover {
             color: var(--text-primary);
             background: var(--bg-surface-hover);
+        }
+        .upload-modal-close:hover,
+        .upload-modal-close:active {
+            transform: none !important;
         }
 
         /* ─── Responsive ─── */
@@ -1351,6 +1400,11 @@
         .reader-topbar .actions .btn-icon:active,
         .library-select:active {
             transform: scale(0.95);
+        }
+
+        #closeUpload:hover,
+        #closeUpload:active {
+            transform: none !important;
         }
 
         .library-topbar {
@@ -2047,7 +2101,12 @@
         <div class="transfer-progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
             <div class="transfer-progress-bar" id="transferProgressBar"></div>
         </div>
+        <div class="transfer-progress-actions">
+            <button class="transfer-progress-action cancel" id="cancelBackupBtn" type="button" style="display:none">Cancel backup</button>
+            <button class="transfer-progress-action" id="dismissTransferBtn" type="button" style="display:none">Dismiss</button>
+        </div>
     </div>
+    <button class="transfer-reopen" id="reopenTransferBtn" type="button">Show backup status</button>
 
     <!-- ─── LIBRARY VIEW ─── -->
     <div id="libraryView">
@@ -2276,7 +2335,12 @@
             const transferProgressBar = document.getElementById('transferProgressBar');
             const transferProgressTrack = transferProgress.querySelector('[role="progressbar"]');
             const transferDownloadLink = document.getElementById('transferDownloadLink');
+            const cancelBackupBtn = document.getElementById('cancelBackupBtn');
+            const dismissTransferBtn = document.getElementById('dismissTransferBtn');
+            const reopenTransferBtn = document.getElementById('reopenTransferBtn');
             let currentBackupDownloadURL = null;
+            let activeBackupCancel = null;
+            let backupCancelRequested = false;
             const downloadReaderBtn = document.getElementById('downloadReaderBtn');
 
             // ─── State ───
@@ -2597,6 +2661,7 @@
                     const folder = zip.folder(comicName || 'comic');
 
                     for (const page of pages) {
+                        if (backupCancelRequested) throw new Error('BACKUP_CANCELLED');
                         const fileName = page.name || ('page_' + String(page.index + 1).padStart(3, '0') + '.jpg');
                         folder.file(fileName, page.blob, { compression: 'STORE' });
                     }
@@ -3262,6 +3327,7 @@
                     transferProgress.classList.add('hidden');
                     return;
                 }
+                reopenTransferBtn.style.display = 'none';
 
                 const safePercent = Math.max(0, Math.min(100, Number(percent) || 0));
                 transferProgress.classList.remove('hidden');
@@ -3271,6 +3337,34 @@
                 transferProgressBar.style.width = `${safePercent}%`;
                 transferProgressTrack.setAttribute('aria-valuenow', String(Math.round(safePercent)));
             }
+
+            cancelBackupBtn.addEventListener('click', async () => {
+                if (!activeBackupCancel || backupCancelRequested) return;
+                backupCancelRequested = true;
+                cancelBackupBtn.disabled = true;
+                setTransferProgress(true, 'Cancelling backup…', 'Stopping the background backup and cleaning up its temporary file.', 0);
+                try { activeBackupCancel(); } catch (_) {}
+                try {
+                    const root = await navigator.storage.getDirectory();
+                    await root.removeEntry('comic-reader-large-backup.tmp').catch(() => {});
+                } catch (_) {}
+            });
+
+            dismissTransferBtn.addEventListener('click', () => {
+                transferProgress.classList.add('hidden');
+                dismissTransferBtn.style.display = 'none';
+                if (transferDownloadLink.style.display !== 'none' && currentBackupDownloadURL) {
+                    reopenTransferBtn.style.display = 'block';
+                }
+            });
+            reopenTransferBtn.addEventListener('click', () => {
+                transferProgress.classList.remove('hidden');
+                reopenTransferBtn.style.display = 'none';
+            });
+            transferDownloadLink.addEventListener('click', () => {
+                // Keep the completed download available even if the progress panel is dismissed.
+                dismissTransferBtn.style.display = 'inline-flex';
+            });
 
             function setTransferControlsDisabled(disabled) {
                 backupBtn.disabled = disabled;
@@ -4300,6 +4394,7 @@
                 let processed = 0;
 
                 for (const comic of comics) {
+                    if (backupCancelRequested) throw new Error('BACKUP_CANCELLED');
                     const pages = await getPageRecords(comic.id);
                     if (!pages.length) continue;
 
@@ -4323,12 +4418,14 @@
                 setTransferProgress(true, 'Generating ZIP file…',
                     `Compressing ${processed.toLocaleString()} pages. This may take a moment.`, 85);
 
+                if (backupCancelRequested) throw new Error('BACKUP_CANCELLED');
                 const zipBlob = await zip.generateAsync({
                     type: 'blob',
                     compression: 'STORE',
                     streamFiles: true,
                     platform: 'UNIX'
                 }, (metadata) => {
+                    if (backupCancelRequested) throw new Error('BACKUP_CANCELLED');
                     const pct = metadata.currentFile
                         ? 85 + (metadata.percent || 0) * 0.14
                         : 85;
@@ -4353,8 +4450,9 @@
 
                 setTransferProgress(true, 'Backup complete',
                     `Downloading ${processed.toLocaleString()} pages.`, 100);
+                cancelBackupBtn.style.display = 'none';
+                dismissTransferBtn.style.display = 'inline-flex';
                 showToast(`Backup created with ${processed.toLocaleString()} pages.`, 'success');
-                setTimeout(() => setTransferProgress(false), 1800);
             }
 
             // OPFS-based backup using worker.
@@ -4373,6 +4471,10 @@
                         backupDoneReject = rej;
                     });
 
+                    activeBackupCancel = () => {
+                        worker.terminate();
+                        backupDoneReject(new Error('BACKUP_CANCELLED'));
+                    };
                     let actualTotalPages = comics.reduce((sum, c) => sum + Math.max(0, Number(c.pageCount) || 0), 0);
                     let addedPages = 0;
                     let currentComic = '';
@@ -4430,6 +4532,8 @@
                     }).then(resolve).catch(err => {
                         worker.terminate();
                         reject(err);
+                    }).finally(() => {
+                        if (activeBackupCancel) activeBackupCancel = null;
                     });
                 });
             }
@@ -4438,6 +4542,12 @@
                 if (backupBtn.disabled) return;
 
                 let busy = false;
+                backupCancelRequested = false;
+                activeBackupCancel = () => { backupCancelRequested = true; };
+                cancelBackupBtn.disabled = false;
+                cancelBackupBtn.style.display = 'inline-flex';
+                dismissTransferBtn.style.display = 'none';
+                reopenTransferBtn.style.display = 'none';
                 try {
                     busy = true;
                     setTransferControlsDisabled(true);
@@ -4449,6 +4559,7 @@
                     }
 
                     const comics = await getAllComics();
+                    if (backupCancelRequested) throw new Error('BACKUP_CANCELLED');
                     if (comics.length === 0) {
                         showToast('No comics to backup. Add some first!', 'error');
                         return;
@@ -4462,6 +4573,7 @@
                     }
 
                     let opfsSupported = await isOPFSSupported();
+                    if (backupCancelRequested) throw new Error('BACKUP_CANCELLED');
                     let usedOPFS = false;
                     let backupFile = null;
                     let fileSize = 0;
@@ -4521,6 +4633,9 @@
                     setTransferProgress(true, 'Backup ready to download',
                         `${totalPages.toLocaleString()} pages have been packed into a ZIP. Click the button below to save it to your Mac.`, 100);
                     showToast('Backup is ready. Click Download backup ZIP in the progress panel.', 'success');
+                    cancelBackupBtn.style.display = 'none';
+                    cancelBackupBtn.disabled = false;
+                    dismissTransferBtn.style.display = 'inline-flex';
 
                     // Keep the worker and temporary OPFS file alive until the download link
                     // expires. Firefox may invalidate an OPFS-backed File URL if its source
@@ -4538,10 +4653,27 @@
                         }
                     }, 600000);
                 } catch (error) {
-                    console.error('Backup failed:', error);
-                    setTransferProgress(false);
-                    showError(error?.message || 'Backup failed. See console for details.');
+                    if (backupCancelRequested || error?.message === 'BACKUP_CANCELLED') {
+                        setTransferProgress(true, 'Backup cancelled', 'The backup was stopped. Your comic library has not been changed.', 0);
+                        showToast('Backup cancelled.', 'success');
+                        cancelBackupBtn.style.display = 'none';
+                        dismissTransferBtn.style.display = 'inline-flex';
+                        if (currentBackupDownloadURL) {
+                            URL.revokeObjectURL(currentBackupDownloadURL);
+                            currentBackupDownloadURL = null;
+                        }
+                        transferDownloadLink.style.display = 'none';
+                        transferDownloadLink.removeAttribute('href');
+                    } else {
+                        console.error('Backup failed:', error);
+                        setTransferProgress(true, 'Backup failed', error?.message || 'See console for details.', 0);
+                        cancelBackupBtn.style.display = 'none';
+                        dismissTransferBtn.style.display = 'inline-flex';
+                        showError(error?.message || 'Backup failed. See console for details.');
+                    }
                 } finally {
+                    activeBackupCancel = null;
+                    cancelBackupBtn.disabled = false;
                     setTransferControlsDisabled(false);
                 }
             });
