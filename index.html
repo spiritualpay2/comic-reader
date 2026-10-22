@@ -2052,7 +2052,54 @@
         .gap-8 {
             gap: 8px;
         }
-    </style>
+    
+        /* Library refresh: clearer hierarchy, responsive search, and lighter motion. */
+        .library-content { padding: clamp(22px, 3.2vw, 42px); }
+        .library-heading { display:flex; flex-direction:column; align-items:stretch; gap:24px; margin-bottom:34px; }
+        .library-heading-copy { width:100%; }
+        .library-controls { width:100%; display:flex; justify-content:center; align-items:center; gap:10px; flex-wrap:nowrap; }
+        .library-search-wrap { position:relative; flex:0 1 620px; width:min(620px, 44vw); min-width:180px; display:flex; align-items:center; }
+        .library-search { min-width:0; width:100%; height:48px; padding:12px 18px 12px 42px; border-radius:999px; }
+        .library-search-icon { z-index:2; color:rgba(220,220,220,.72); }
+        .library-search-icon svg, .library-search-button svg { fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; display:block; width:19px; height:19px; }
+        .library-search-button { flex:0 0 48px; display:flex; align-items:center; justify-content:center; width:48px; height:48px; border:1px solid rgba(46,204,113,.35); border-radius:50%; background:rgba(46,204,113,.09); color:#72e6a1; cursor:pointer; transition:background .14s ease; }
+        .library-search-button:hover { background:rgba(46,204,113,.17); }
+        .library-search-button:active { background:rgba(46,204,113,.24); }
+        .library-select-wrap { flex:0 0 auto; }
+        .collection-section-heading { display:flex; align-items:flex-end; justify-content:space-between; gap:16px; margin:0 0 20px; }
+        .collection-section-heading h3 { margin-top:5px; font-size:22px; letter-spacing:-.55px; }
+        .section-kicker { color:var(--text-muted); font-size:10px; font-weight:700; letter-spacing:.14em; }
+        .section-count { color:var(--text-muted); font-size:12px; padding-bottom:3px; }
+        .favorites-section { margin:0 0 48px; padding:24px; border:1px solid rgba(230,190,74,.34); border-radius:20px; background:linear-gradient(145deg,rgba(230,190,74,.045),rgba(255,255,255,.008) 52%,rgba(230,190,74,.015)); }
+        .favorites-section .collection-section-heading h3 { color:#e8c866; }
+        .favorites-section .section-kicker { color:rgba(232,200,102,.68); }
+        .favorites-grid { gap:22px 18px; }
+        .normal-section { margin-top:0; }
+        .library-grid { grid-template-columns:repeat(auto-fill,minmax(175px,1fr)); gap:24px 18px; contain:layout style; }
+        .comic-card, .comic-card:hover { transition:border-color .12s ease; }
+        .comic-card:hover { transform:none; }
+        .comic-card.is-favorite, .comic-card.is-favorite:hover { transform:none; }
+        .comic-card:not(.is-favorite) { box-shadow:none; }
+        @media (max-width:900px) {
+            .library-controls { gap:8px; }
+            .library-search-wrap { flex-basis:420px; width:auto; }
+            .library-select { min-width:120px; }
+            .favorites-section { padding:18px; margin-bottom:36px; }
+        }
+        @media (max-width:680px) {
+            .library-controls { display:grid; grid-template-columns:minmax(0,1fr) 48px; justify-content:stretch; }
+            .library-select-wrap { width:100%; }
+            .library-select-wrap .library-select { width:100%; min-width:0; }
+            .library-search-wrap { grid-column:1 / -1; grid-row:2; width:100%; flex-basis:auto; }
+            .library-search-button { grid-column:2; grid-row:2; }
+            .library-grid { grid-template-columns:repeat(auto-fill,minmax(135px,1fr)); gap:16px 12px; }
+            .favorites-section { padding:14px; border-radius:16px; }
+            .collection-section-heading h3 { font-size:19px; }
+        }
+        @media (prefers-reduced-motion:reduce) {
+            .comic-card, .comic-card:hover, .library-search-button { transition:none !important; }
+        }
+</style>
 </head>
 <body>
 
@@ -2134,15 +2181,6 @@
                     <p id="libraryCount">0 comics</p>
                 </div>
                 <div class="library-controls" aria-label="Library controls">
-                    <div class="library-search-wrap">
-                        <span class="library-search-icon" aria-hidden="true">
-                            <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
-                                <circle cx="11" cy="11" r="6.5"></circle>
-                                <path d="M16 16l4.5 4.5"></path>
-                            </svg>
-                        </span>
-                        <input class="library-search" id="librarySearch" type="search" placeholder="Search your library…" aria-label="Search library" />
-                    </div>
                     <label class="library-select-wrap">
                         <span class="sr-only">Sort library</span>
                         <select class="library-select" id="librarySort" aria-label="Sort library">
@@ -2164,10 +2202,35 @@
                             <option value="finished">Finished</option>
                         </select>
                     </label>
+                    <div class="library-search-wrap">
+                        <span class="library-search-icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24" focusable="false" aria-hidden="true">
+                                <circle cx="10.8" cy="10.8" r="6.4"></circle>
+                                <path d="M15.5 15.5L20 20"></path>
+                            </svg>
+                        </span>
+                        <input class="library-search" id="librarySearch" type="search" placeholder="Search your library…" aria-label="Search library" />
+                    </div>
+                    <button class="library-search-button" id="librarySearchButton" type="button" aria-label="Search library" title="Search">
+                        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><circle cx="10.5" cy="10.5" r="6.5"></circle><path d="M15.3 15.3L20 20"></path></svg>
+                    </button>
                 </div>
             </div>
 
-            <div class="library-grid" id="libraryGrid"></div>
+            <section class="favorites-section hidden" id="favoritesSection" aria-labelledby="favoritesHeading">
+                <div class="collection-section-heading">
+                    <div><span class="section-kicker">CURATED COLLECTION</span><h3 id="favoritesHeading">★ Favorites</h3></div>
+                    <span class="section-count" id="favoritesCount">0 comics</span>
+                </div>
+                <div class="library-grid favorites-grid" id="favoritesGrid"></div>
+            </section>
+            <section class="normal-section" id="normalSection" aria-labelledby="normalHeading">
+                <div class="collection-section-heading normal-section-heading">
+                    <div><span class="section-kicker">YOUR LIBRARY</span><h3 id="normalHeading">All comics</h3></div>
+                    <span class="section-count" id="normalCount"></span>
+                </div>
+                <div class="library-grid" id="libraryGrid"></div>
+            </section>
 
             <div class="library-empty hidden" id="libraryEmpty">
                 <div class="empty-icon">📚</div>
@@ -2277,6 +2340,12 @@
             // ─── DOM refs ───
             const libraryView = document.getElementById('libraryView');
             const libraryGrid = document.getElementById('libraryGrid');
+            const favoritesGrid = document.getElementById('favoritesGrid');
+            const favoritesSection = document.getElementById('favoritesSection');
+            const normalSection = document.getElementById('normalSection');
+            const favoritesCount = document.getElementById('favoritesCount');
+            const normalCount = document.getElementById('normalCount');
+            const librarySearchButton = document.getElementById('librarySearchButton');
             const libraryEmpty = document.getElementById('libraryEmpty');
             const libraryCount = document.getElementById('libraryCount');
             const librarySearch = document.getElementById('librarySearch');
@@ -2850,27 +2919,7 @@
                         const stored = libraryComics.find(item => item.id === currentComic.id);
                         if (stored) stored.favorite = nextFavorite;
 
-                        updateLibraryCard(card, currentComic);
-
-                        if (nextFavorite) {
-                            const firstNonFavorite = Array.from(libraryGrid.children)
-                                .find(child => !child.classList.contains('is-favorite'));
-                            if (firstNonFavorite && firstNonFavorite !== card) {
-                                libraryGrid.insertBefore(card, firstNonFavorite);
-                            }
-                        } else if (libraryFilter.value === 'favorites') {
-                            revokeLibraryCover(card.querySelector('.comic-cover img'));
-                            card.remove();
-                            libraryCardCache.delete(currentComic.id);
-                            if (libraryGrid.children.length === 0) {
-                                libraryGrid.classList.add('hidden');
-                                libraryEmpty.classList.remove('hidden');
-                                libraryEmpty.querySelector('h3').textContent = 'Nothing here yet';
-                                libraryEmpty.querySelector('p').textContent = 'No comics currently match this filter.';
-                            }
-                        } else {
-                            await renderLibrary(false, false);
-                        }
+                        await renderLibrary(false, false);
 
                         showToast(nextFavorite ? 'Added to favorites' : 'Removed from favorites', 'success');
                     } catch (error) {
@@ -3036,36 +3085,31 @@
 
             // ─── Render library ───
             async function renderLibrary(updateStorage = true, reloadData = true) {
-                if (reloadData) {
-                    libraryComics = await getAllComics();
-                }
-
-                const query = librarySearch.value.trim().toLowerCase();
+                if (reloadData) libraryComics = await getAllComics();
+                const query = librarySearch.value.trim().toLocaleLowerCase();
                 let visible = libraryComics;
-
-                if (query) {
-                    visible = visible.filter(comic => comic.name.toLowerCase().includes(query));
-                }
-                visible = filterLibraryComics(visible);
-                visible = sortLibraryComics(visible);
+                if (query) visible = visible.filter(comic => (comic.name || '').toLocaleLowerCase().includes(query));
+                visible = sortLibraryComics(filterLibraryComics(visible));
 
                 const totalCount = libraryComics.length;
                 const visibleCount = visible.length;
-                const suffix = query || libraryFilter.value !== 'all' ?
-                    ` • ${visibleCount} shown` :
-                    '';
+                const suffix = query || libraryFilter.value !== 'all' ? ` • ${visibleCount} shown` : '';
                 libraryCount.textContent = `${totalCount} comic${totalCount === 1 ? '' : 's'}${suffix}`;
 
+                const favorites = visible.filter(comic => !!comic.favorite);
+                const normal = visible.filter(comic => !comic.favorite);
+                favoritesSection.classList.toggle('hidden', favorites.length === 0);
+                normalSection.classList.toggle('hidden', normal.length === 0);
+                favoritesCount.textContent = `${favorites.length} comic${favorites.length === 1 ? '' : 's'}`;
+                normalCount.textContent = `${normal.length} comic${normal.length === 1 ? '' : 's'}`;
+                libraryGrid.classList.toggle('hidden', normal.length === 0);
+                favoritesGrid.classList.toggle('hidden', favorites.length === 0);
                 libraryEmpty.classList.toggle('hidden', visible.length !== 0);
-                libraryGrid.classList.toggle('hidden', visible.length === 0);
 
                 const visibleIds = new Set(visible.map(comic => comic.id));
-                for (const comicId of Array.from(libraryCardCache.keys())) {
-                    if (!visibleIds.has(comicId)) {
-                        removeCachedLibraryCard(comicId);
-                    }
+                for (const comicId of libraryCardCache.keys()) {
+                    if (!visibleIds.has(comicId)) removeCachedLibraryCard(comicId);
                 }
-
                 if (visible.length === 0) {
                     const heading = libraryEmpty.querySelector('h3');
                     const paragraph = libraryEmpty.querySelector('p');
@@ -3077,30 +3121,24 @@
                         paragraph.textContent = 'No comics currently match this filter.';
                     } else {
                         heading.textContent = 'Your library is empty';
-                        paragraph.textContent =
-                            'Add a comic folder to build your personal library. Your comics are stored locally in this browser.';
+                        paragraph.textContent = 'Add a comic folder to build your personal library. Your comics are stored locally in this browser.';
                     }
                     if (updateStorage) await updateStorageUsage();
                     return;
                 }
 
-                const fragment = document.createDocumentFragment();
-
+                const favoriteFragment = document.createDocumentFragment();
+                const normalFragment = document.createDocumentFragment();
                 for (const comic of visible) {
                     let card = libraryCardCache.get(comic.id);
-                    if (!card) {
-                        card = createLibraryCard(comic);
-                    } else {
-                        updateLibraryCard(card, comic);
-                    }
-                    fragment.appendChild(card);
+                    if (!card) card = createLibraryCard(comic);
+                    else updateLibraryCard(card, comic);
+                    (comic.favorite ? favoriteFragment : normalFragment).appendChild(card);
                 }
-
-                libraryGrid.appendChild(fragment);
-
+                favoritesGrid.replaceChildren(favoriteFragment);
+                libraryGrid.replaceChildren(normalFragment);
                 if (updateStorage) await updateStorageUsage();
             }
-
 
             async function openComicFromLibrary(comicId) {
                 try {
@@ -4904,10 +4942,16 @@
                 if (e.target === uploadView) closeUploadModal();
             });
 
-            librarySearch.addEventListener('input', () => {
-                renderLibrary(false, false).catch(console.error);
+            let searchRenderFrame = 0;
+            function runLibrarySearch() {
+                cancelAnimationFrame(searchRenderFrame);
+                searchRenderFrame = requestAnimationFrame(() => renderLibrary(false, false).catch(console.error));
+            }
+            librarySearch.addEventListener('input', runLibrarySearch);
+            librarySearchButton.addEventListener('click', () => { runLibrarySearch(); });
+            librarySearch.addEventListener('keydown', event => {
+                if (event.key === 'Enter') { event.preventDefault(); runLibrarySearch(); }
             });
-
             librarySort.addEventListener('change', () => {
                 renderLibrary(false, false).catch(console.error);
             });
