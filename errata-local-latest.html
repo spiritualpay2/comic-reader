@@ -1,0 +1,5156 @@
+<!doctype html>
+<html lang="en" class="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<title>Errata Local</title>
+<meta name="description" content="A quiet AI storywriting and character chat surface built from the Errata design reference.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cg fill='%23d9a86b'%3E%3Cpath d='M0 -8 C1.6 -5.2 1.6 -1.2 0 .8 C-1.6 -1.2 -1.6 -5.2 0 -8 Z' transform='translate(12 12) rotate(0)'/%3E%3Cpath d='M0 -8 C1.6 -5.2 1.6 -1.2 0 .8 C-1.6 -1.2 -1.6 -5.2 0 -8 Z' transform='translate(12 12) rotate(60) scale(.7)'/%3E%3Cpath d='M0 -8 C1.6 -5.2 1.6 -1.2 0 .8 C-1.6 -1.2 -1.6 -5.2 0 -8 Z' transform='translate(12 12) rotate(120)'/%3E%3Cpath d='M0 -8 C1.6 -5.2 1.6 -1.2 0 .8 C-1.6 -1.2 -1.6 -5.2 0 -8 Z' transform='translate(12 12) rotate(180) scale(.7)'/%3E%3Cpath d='M0 -8 C1.6 -5.2 1.6 -1.2 0 .8 C-1.6 -1.2 -1.6 -5.2 0 -8 Z' transform='translate(12 12) rotate(240)'/%3E%3Cpath d='M0 -8 C1.6 -5.2 1.6 -1.2 0 .8 C-1.6 -1.2 -1.6 -5.2 0 -8 Z' transform='translate(12 12) rotate(300) scale(.7)'/%3E%3C/g%3E%3Ccircle cx='12' cy='12' r='1.6' fill='%23d9a86b'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=JetBrains+Mono:wght@400;500&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400;1,6..72,500&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* ============================================================
+     ERRATA LOCAL
+     Two surfaces:
+       1. Library  — Stories and Characters tabs, card grids.
+       2. Reader   — timelines, prose stage, docked composer.
+     Dark theme is canonical. Starfield backdrop throughout.
+     ============================================================ */
+
+  :root {
+    --radius: 0.5rem;
+    --background: oklch(0.145 0.008 55);
+    --foreground: oklch(0.895 0.015 75);
+    --card: oklch(0.175 0.010 55);
+    --card-foreground: oklch(0.895 0.015 75);
+    --popover: oklch(0.175 0.010 55);
+    --popover-foreground: oklch(0.895 0.015 75);
+    --primary: oklch(0.765 0.105 65);
+    --primary-foreground: oklch(0.145 0.008 55);
+    --secondary: oklch(0.215 0.012 55);
+    --secondary-foreground: oklch(0.895 0.015 75);
+    --muted: oklch(0.215 0.012 55);
+    --muted-foreground: oklch(0.595 0.018 60);
+    --accent: oklch(0.235 0.015 55);
+    --accent-foreground: oklch(0.895 0.015 75);
+    --destructive: oklch(0.605 0.155 25);
+    --border: oklch(1 0 0 / 7%);
+    --input: oklch(1 0 0 / 10%);
+    --ring: oklch(0.765 0.105 65);
+    --font-display: "Instrument Serif", Georgia, serif;
+    --font-prose: "Newsreader", Georgia, serif;
+    --font-sans: "Outfit", -apple-system, BlinkMacSystemFont, sans-serif;
+    --font-mono: "JetBrains Mono", "Fira Code", Menlo, monospace;
+    --topbar-height: 66px;
+  }
+
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+
+  html { height: 100%; font-size: 16px; }
+
+  body {
+    margin: 0;
+    height: 100vh;
+    height: 100dvh;
+    min-width: 320px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    font-size: 1rem;
+    letter-spacing: -0.01em;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  button, input, textarea, select { font: inherit; }
+  button { color: inherit; cursor: pointer; }
+  button:disabled { cursor: not-allowed; opacity: .5; }
+  a { color: inherit; text-decoration: none; }
+  code, pre, .mono { font-family: var(--font-mono); }
+
+  ::selection { background: oklch(0.765 0.105 65 / 25%); }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: oklch(1 0 0 / 10%); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: oklch(1 0 0 / 20%); }
+
+  :focus-visible {
+    outline: 0;
+    box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring) 48%, transparent);
+  }
+
+  .display { font-family: var(--font-display); }
+  .prose-font { font-family: var(--font-prose); }
+  .muted { color: var(--muted-foreground); }
+  .small-label { color: var(--muted-foreground); font-size: .6875rem; }
+
+  /* ------------------------------------------------------------
+     Starfield
+     ------------------------------------------------------------ */
+
+  .starfield {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+    isolation: isolate;
+    contain: strict;
+  }
+
+  .starfield::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    background:
+      radial-gradient(circle at 50% 45%,
+        transparent 0%,
+        color-mix(in oklch, var(--background) 48%, transparent) 58%,
+        color-mix(in oklch, var(--background) 88%, transparent) 88%,
+        var(--background) 100%);
+    pointer-events: none;
+  }
+
+  .star {
+    position: absolute;
+    border-radius: 50%;
+    background: #ffffff;
+    opacity: var(--min-o, .08);
+    animation-name: star-twinkle;
+    animation-timing-function: ease-in-out;
+    animation-iteration-count: infinite;
+    animation-fill-mode: both;
+  }
+
+  @keyframes star-twinkle {
+    0%, 100% { opacity: var(--min-o, .05); }
+    50% { opacity: var(--max-o, .45); }
+  }
+
+  /* ------------------------------------------------------------
+     Orbit field — library background of slowly spinning circles
+     ------------------------------------------------------------ */
+
+  .orbit-field {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    overflow: hidden;
+    pointer-events: none;
+    contain: strict;
+  }
+
+  .orbit-field svg { width: 100%; height: 100%; display: block; }
+
+  .orbit-ring {
+    fill: none;
+    stroke: color-mix(in oklch, var(--foreground) 88%, var(--primary));
+  }
+
+  .orbit-dot { fill: color-mix(in oklch, var(--primary) 70%, var(--foreground)); }
+
+  /* ------------------------------------------------------------
+     Top bar
+     ------------------------------------------------------------ */
+
+  .topbar {
+    position: relative;
+    z-index: 40;
+    flex: none;
+    height: var(--topbar-height);
+    display: flex;
+    align-items: center;
+    padding: 0 clamp(12px, 2.4vw, 22px);
+    border-bottom: 1px solid var(--border);
+    background: color-mix(in oklch, var(--background) 76%, transparent);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  .topbar-library {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 12px;
+    width: 100%;
+  }
+
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--foreground);
+    justify-self: start;
+  }
+
+  .brand-mark {
+    width: 27px;
+    height: 27px;
+    display: block;
+    color: var(--primary);
+    flex: none;
+  }
+
+  .brand-word {
+    font-family: var(--font-display);
+    font-style: italic;
+    letter-spacing: -.045em;
+    line-height: 1;
+    font-size: 1.62rem;
+  }
+
+  .topbar-reader {
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    width: 100%;
+    min-width: 0;
+  }
+
+  .back-btn {
+    width: 32px;
+    height: 32px;
+    flex: none;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--card);
+    color: var(--muted-foreground);
+    transition: all .15s ease;
+  }
+
+  .back-btn:hover { color: var(--foreground); background: var(--accent); }
+  .back-btn svg { width: 15px; height: 15px; }
+
+  .reader-title {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: 1.22rem;
+    letter-spacing: -.03em;
+    line-height: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    min-width: 0;
+  }
+
+  /* ------------------------------------------------------------
+     Tabs (from src/components/ui/tabs.tsx)
+     ------------------------------------------------------------ */
+
+  .tabs-bar {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    width: max-content;
+    max-width: 100%;
+    padding: 3px;
+    border-radius: 8px;
+    background: var(--muted);
+  }
+
+  .tab {
+    padding: 7px 14px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--muted-foreground);
+    font-size: .72rem;
+    font-weight: 500;
+    white-space: nowrap;
+    transition: all .14s ease;
+  }
+
+  .tab:hover { color: var(--foreground); }
+
+  .tab[aria-selected="true"] {
+    background: var(--background);
+    color: var(--foreground);
+    box-shadow: 0 1px 2px #00000012;
+  }
+
+  /* ------------------------------------------------------------
+     App shell
+     ------------------------------------------------------------ */
+
+  .app-main {
+    position: relative;
+    z-index: 1;
+    flex: 1 1 auto;
+    min-height: 0;
+  }
+
+  .library-view {
+    height: 100%;
+    overflow-y: auto;
+    padding: 30px clamp(16px, 4vw, 52px) 72px;
+  }
+
+  .library-inner {
+    max-width: 1280px;
+    margin: 0 auto;
+  }
+
+  .view-head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 18px;
+  }
+
+  .view-title {
+    margin: 0;
+    font-family: var(--font-display);
+    font-style: italic;
+    font-weight: 400;
+    font-size: clamp(1.7rem, 3vw, 2.2rem);
+    letter-spacing: -.04em;
+    line-height: 1;
+  }
+
+  .view-sub {
+    margin: 7px 0 0;
+    color: var(--muted-foreground);
+    font-size: .68rem;
+  }
+
+  /* ------------------------------------------------------------
+     Card grid — five per row on wide screens
+     ------------------------------------------------------------ */
+
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 14px;
+    align-items: stretch;
+  }
+
+  /* Story card ---------------------------------------------------- */
+
+  .story-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    border: 1px solid color-mix(in oklch, var(--border) 85%, transparent);
+    border-radius: 12px;
+    background: color-mix(in oklch, var(--card) 62%, transparent);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    overflow: hidden;
+    cursor: pointer;
+    text-align: left;
+    transition: border-color .16s ease, background .16s ease, transform .16s ease;
+    animation: card-enter .38s ease-out both;
+  }
+
+  .story-card:hover,
+  .story-card:focus-visible {
+    border-color: color-mix(in oklch, var(--primary) 32%, var(--border));
+    background: color-mix(in oklch, var(--card) 88%, transparent);
+    transform: translateY(-2px);
+  }
+
+  @keyframes card-enter {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .story-cover {
+    position: relative;
+    aspect-ratio: 3 / 2;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    border-bottom: 1px solid color-mix(in oklch, var(--border) 80%, transparent);
+    background:
+      radial-gradient(circle at 30% 20%,
+        color-mix(in oklch, var(--primary) 16%, transparent),
+        transparent 62%),
+      linear-gradient(155deg,
+        color-mix(in oklch, var(--muted) 88%, transparent),
+        color-mix(in oklch, var(--background) 70%, var(--card)));
+  }
+
+  .story-cover img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .story-cover-letter {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: 2.1rem;
+    line-height: 1;
+    color: color-mix(in oklch, var(--primary) 62%, var(--muted-foreground));
+    user-select: none;
+  }
+
+  .story-actions {
+    position: absolute;
+    top: 7px;
+    right: 7px;
+    display: flex;
+    gap: 5px;
+    opacity: 0;
+    transform: translateY(-3px);
+    transition: opacity .16s ease, transform .16s ease;
+    z-index: 3;
+  }
+
+  .story-card:hover .story-actions,
+  .story-card:focus-within .story-actions { opacity: 1; transform: translateY(0); }
+
+  .icon-btn {
+    width: 26px;
+    height: 26px;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: color-mix(in oklch, #0d0b09 82%, transparent);
+    color: var(--muted-foreground);
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    transition: all .14s ease;
+  }
+
+  .icon-btn:hover { color: var(--foreground); border-color: color-mix(in oklch, var(--primary) 38%, var(--border)); }
+  .icon-btn svg { width: 13px; height: 13px; }
+
+  .icon-btn.armed {
+    color: #fff;
+    background: var(--destructive);
+    border-color: var(--destructive);
+  }
+
+  .story-body {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 11px 12px 13px;
+    min-width: 0;
+  }
+
+  .story-title {
+    font-size: .82rem;
+    font-weight: 500;
+    line-height: 1.3;
+    color: var(--foreground);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 1;
+    -webkit-box-orient: vertical;
+  }
+
+  .story-desc {
+    margin: 0;
+    color: var(--muted-foreground);
+    font-size: .66rem;
+    line-height: 1.45;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    min-height: 1.9em;
+  }
+
+  .story-date {
+    margin-top: 3px;
+    color: color-mix(in oklch, var(--muted-foreground) 82%, transparent);
+    font-family: var(--font-mono);
+    font-size: .545rem;
+    letter-spacing: .02em;
+  }
+
+  /* Add card ------------------------------------------------------ */
+
+  .add-card {
+    display: grid;
+    place-items: center;
+    gap: 9px;
+    min-height: 100%;
+    padding: 20px 12px;
+    border: 1px dashed color-mix(in oklch, var(--primary) 34%, var(--border));
+    border-radius: 12px;
+    background: transparent;
+    color: color-mix(in oklch, var(--primary) 78%, var(--muted-foreground));
+    transition: all .16s ease;
+    animation: card-enter .38s ease-out both;
+  }
+
+  .add-card:hover {
+    background: color-mix(in oklch, var(--primary) 6%, transparent);
+    border-color: color-mix(in oklch, var(--primary) 55%, var(--border));
+  }
+
+  .add-plus {
+    width: 38px;
+    height: 38px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    border: 1px solid color-mix(in oklch, var(--primary) 40%, transparent);
+    font-size: 1.25rem;
+    line-height: 1;
+    color: var(--primary);
+  }
+
+  .add-label {
+    font-size: .68rem;
+    font-weight: 500;
+    letter-spacing: .01em;
+  }
+
+  /* Character card ------------------------------------------------ */
+
+  .char-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 9px;
+    padding: 18px 12px 15px;
+    border: 1px solid color-mix(in oklch, var(--border) 85%, transparent);
+    border-radius: 12px;
+    background: color-mix(in oklch, var(--card) 58%, transparent);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    text-align: center;
+    transition: border-color .16s ease, background .16s ease, transform .16s ease;
+    animation: card-enter .38s ease-out both;
+    cursor: pointer;
+  }
+
+  .char-card:hover {
+    border-color: color-mix(in oklch, var(--primary) 28%, var(--border));
+    background: color-mix(in oklch, var(--card) 84%, transparent);
+    transform: translateY(-2px);
+  }
+
+  .char-portrait {
+    width: 52px;
+    height: 52px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    border: 1px solid color-mix(in oklch, var(--primary) 20%, var(--border));
+    background: color-mix(in oklch, var(--primary) 10%, var(--card));
+    color: var(--primary);
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: 1.4rem;
+    line-height: 1;
+    user-select: none;
+  }
+
+  .char-name {
+    font-size: .76rem;
+    font-weight: 500;
+    line-height: 1.25;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  .char-role {
+    color: var(--muted-foreground);
+    font-size: .58rem;
+    text-transform: uppercase;
+    letter-spacing: .1em;
+  }
+
+  /* ------------------------------------------------------------
+     Reader view
+     ------------------------------------------------------------ */
+
+  .reader-view {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+  }
+
+  /* Timeline rail ------------------------------------------------- */
+
+  .timeline-rail {
+    position: relative;
+    z-index: 35;
+    flex: none;
+    display: flex;
+    align-items: stretch;
+    gap: 9px;
+    padding: 9px clamp(12px, 2.2vw, 18px);
+    border-bottom: 1px solid var(--border);
+    background: color-mix(in oklch, var(--background) 72%, transparent);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  .timeline-scroller {
+    flex: 1 1 auto;
+    min-width: 0;
+    display: flex;
+    align-items: stretch;
+    gap: 8px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 1px;
+    scrollbar-width: none;
+  }
+
+  .timeline-scroller::-webkit-scrollbar { display: none; }
+
+  .timeline-chip {
+    flex: none;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 2px;
+    min-width: 138px;
+    padding: 7px 12px;
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    background: color-mix(in oklch, var(--card) 52%, transparent);
+    color: var(--foreground);
+    text-align: left;
+    transition: border-color .15s ease, background .15s ease;
+  }
+
+  .timeline-chip:hover {
+    border-color: color-mix(in oklch, var(--primary) 30%, var(--border));
+    background: color-mix(in oklch, var(--card) 82%, transparent);
+  }
+
+  .timeline-chip[aria-pressed="true"] {
+    border-color: color-mix(in oklch, var(--primary) 45%, var(--border));
+    background: color-mix(in oklch, var(--primary) 7%, var(--card));
+  }
+
+  .tl-name {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding-right: 18px;
+    font-size: .72rem;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  .tl-name::before {
+    content: "";
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--primary);
+    opacity: 0;
+    flex: none;
+    box-shadow: 0 0 8px color-mix(in oklch, var(--primary) 55%, transparent);
+    transition: opacity .15s ease;
+  }
+
+  .timeline-chip[aria-pressed="true"] .tl-name::before { opacity: 1; }
+
+  /* Per-timeline delete — arm on first click, fire on the second. */
+
+  .tl-delete {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    width: 18px;
+    height: 18px;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--muted-foreground);
+    opacity: 0;
+    transition: opacity .15s ease, color .14s ease, background .14s ease;
+  }
+
+  .timeline-chip:hover .tl-delete,
+  .timeline-chip:focus-within .tl-delete { opacity: 1; }
+
+  .tl-delete:hover { color: #fff; background: color-mix(in oklch, var(--destructive) 72%, transparent); }
+
+  .tl-delete.armed {
+    color: #fff;
+    background: var(--destructive);
+    opacity: 1;
+  }
+
+  .tl-delete svg { width: 10px; height: 10px; }
+
+  .tl-meta {
+    font-size: .56rem;
+    color: var(--muted-foreground);
+    white-space: nowrap;
+    letter-spacing: .01em;
+    padding-left: 11px;
+  }
+
+  .fork-button {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    padding: 0 14px;
+    border: 1px dashed color-mix(in oklch, var(--primary) 38%, var(--border));
+    border-radius: 9px;
+    background: transparent;
+    color: color-mix(in oklch, var(--primary) 82%, var(--foreground));
+    font-size: .72rem;
+    font-weight: 500;
+    white-space: nowrap;
+    transition: all .15s ease;
+  }
+
+  .fork-button:hover {
+    background: color-mix(in oklch, var(--primary) 9%, transparent);
+    border-color: color-mix(in oklch, var(--primary) 55%, var(--border));
+  }
+
+  .fork-plus { font-size: .92rem; line-height: 1; margin-top: -1px; }
+
+  /* Workspace ----------------------------------------------------- */
+
+  .workspace {
+    position: relative;
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .prose-stage {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 28px clamp(16px, 3vw, 34px) 14px;
+    transition: padding .25s ease;
+  }
+
+  /* When a side popout is open on a wide screen the stage yields — the
+     prose slides clear of the panel instead of hiding underneath it. */
+  @media (min-width: 1200px) {
+    #readerView.panel-left-open .prose-stage { padding-left: 396px; }
+    #readerView.panel-right-open .prose-stage { padding-right: 412px; }
+    #readerView.panel-right-open.panel-right-wide .prose-stage { padding-right: 502px; }
+  }
+
+  .prose-inner {
+    width: 100%;
+    max-width: var(--prose-width, 38rem);
+    margin: 0 auto;
+    transition: max-width .25s ease;
+  }
+
+  .reader-page-title {
+    margin: 0 0 24px;
+    text-align: center;
+    font-family: var(--font-display);
+    font-style: italic;
+    font-weight: 400;
+    font-size: clamp(1.3rem, 2.3vw, 1.65rem);
+    letter-spacing: -.03em;
+    color: color-mix(in oklch, var(--foreground) 76%, var(--muted-foreground));
+  }
+
+  /* Clickable story title — warm yellow underline, quiet until hovered. */
+
+  .title-link {
+    border: 0;
+    padding: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    letter-spacing: inherit;
+    cursor: pointer;
+    max-width: 100%;
+    text-decoration: underline;
+    text-decoration-color: var(--primary);
+    text-decoration-thickness: 2px;
+    text-underline-offset: 6px;
+    transition: color .15s ease, text-decoration-color .15s ease;
+  }
+
+  .title-link:hover {
+    color: var(--foreground);
+    text-decoration-color: color-mix(in oklch, var(--primary) 78%, white);
+  }
+
+  .title-link:focus-visible {
+    outline: 0;
+    box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring) 48%, transparent);
+    border-radius: 4px;
+  }
+
+  .prose-content {
+    font-family: var(--font-prose);
+    font-size: var(--prose-size, 1.0625rem);
+    line-height: 1.75;
+    letter-spacing: .005em;
+    color: var(--foreground);
+  }
+
+  /* Spoken lines read a shade cooler than the narration. */
+  .prose-content .dialogue { color: oklch(78% 0.07 248); }
+
+  .prose-content p { margin: 0 0 .9em; }
+  .prose-content p:last-child { margin-bottom: 0; }
+
+  .prose-anim { animation: prose-enter .45s ease-out both; }
+
+  @keyframes prose-enter {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Composer dock ------------------------------------------------- */
+
+  .composer-dock {
+    position: relative;
+    z-index: 2;
+    flex: none;
+    padding: 6px clamp(13px, 3vw, 20px) max(16px, env(safe-area-inset-bottom));
+  }
+
+  .composer-dock::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 100%;
+    height: 26px;
+    background: linear-gradient(to top,
+      color-mix(in oklch, var(--background) 70%, transparent),
+      transparent);
+    pointer-events: none;
+  }
+
+  .dock-inner {
+    width: 100%;
+    max-width: calc(var(--prose-width, 38rem) + 5.75rem);
+    margin: 0 auto;
+  }
+
+  /* ------------------------------------------------------------
+     Model cluster
+     ------------------------------------------------------------ */
+
+  .model-cluster { position: relative; }
+
+  .model-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    height: 30px;
+    padding: 0 11px;
+    max-width: 100%;
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    background: color-mix(in oklch, var(--card) 70%, transparent);
+    color: var(--foreground);
+    font-size: .72rem;
+    white-space: nowrap;
+    transition: border-color .15s ease, background .15s ease;
+  }
+
+  .model-button:hover {
+    border-color: color-mix(in oklch, var(--primary) 34%, var(--border));
+    background: color-mix(in oklch, var(--card) 90%, transparent);
+  }
+
+  .model-button[aria-expanded="true"] {
+    border-color: color-mix(in oklch, var(--primary) 45%, var(--border));
+    background: color-mix(in oklch, var(--primary) 6%, var(--card));
+  }
+
+  .tiny-dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--primary);
+    display: inline-block;
+    flex: none;
+    box-shadow: 0 0 8px color-mix(in oklch, var(--primary) 55%, transparent);
+  }
+
+  .model-name {
+    font-weight: 500;
+    letter-spacing: -.005em;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 22ch;
+  }
+
+  .model-temp {
+    font-size: .62rem;
+    color: var(--muted-foreground);
+    padding-left: 8px;
+    border-left: 1px solid var(--border);
+  }
+
+  .model-chevron {
+    width: 12px;
+    height: 12px;
+    opacity: .55;
+    transition: transform .18s ease;
+    flex: none;
+  }
+
+  .model-button[aria-expanded="true"] .model-chevron { transform: rotate(180deg); }
+
+  .model-popover {
+    position: absolute;
+    bottom: calc(100% + 10px);
+    top: auto;
+    right: 0;
+    left: auto;
+    z-index: 60;
+    display: none;
+    width: min(330px, calc(100vw - 30px));
+    max-height: calc(100vh - 140px);
+    overflow-y: auto;
+    padding: 15px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--popover);
+    color: var(--popover-foreground);
+    box-shadow: 0 24px 70px -20px #000, 0 1px 0 oklch(1 0 0 / 5%) inset;
+  }
+
+  .model-popover.open {
+    display: block;
+    animation: pop-in .18s ease-out both;
+  }
+
+  @keyframes pop-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .popover-head { margin-bottom: 13px; }
+
+  .panel-title {
+    margin: 0 0 3px;
+    font-size: .8rem;
+    font-weight: 500;
+    color: var(--foreground);
+  }
+
+  .panel-desc {
+    margin: 0;
+    font-size: .65rem;
+    line-height: 1.5;
+    color: var(--muted-foreground);
+  }
+
+  .field-group { display: block; margin-bottom: 11px; }
+
+  .field-label {
+    display: block;
+    margin: 0 0 6px;
+    color: var(--muted-foreground);
+    font-size: .65rem;
+    font-weight: 500;
+  }
+
+  .field-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 7px;
+  }
+
+  .field {
+    width: 100%;
+    min-width: 0;
+    border: 1px solid var(--input);
+    border-radius: 7px;
+    outline: none;
+    background: color-mix(in oklch, var(--background) 85%, var(--card));
+    color: var(--foreground);
+    padding: 8px 10px;
+    font-size: .75rem;
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+
+  .field:focus {
+    border-color: color-mix(in oklch, var(--primary) 42%, var(--border));
+    box-shadow: 0 0 0 2px color-mix(in oklch, var(--ring) 18%, transparent);
+  }
+
+  .field.mono { font-family: var(--font-mono); font-size: .68rem; }
+
+  .range {
+    width: 100%;
+    height: 4px;
+    appearance: none;
+    -webkit-appearance: none;
+    border-radius: 999px;
+    background: color-mix(in oklch, var(--border) 70%, transparent);
+    accent-color: var(--foreground);
+    cursor: pointer;
+  }
+
+  .range::-webkit-slider-thumb {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--foreground);
+    border: 2px solid var(--background);
+    box-shadow: 0 0 0 1px var(--border);
+  }
+
+  .range::-moz-range-thumb {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--foreground);
+    border: 2px solid var(--background);
+  }
+
+  .popover-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 15px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+
+  #modelSaved { opacity: 0; transition: opacity .25s ease; }
+  #modelSaved.show { opacity: 1; }
+
+  /* ------------------------------------------------------------
+     Buttons
+     ------------------------------------------------------------ */
+
+  .btn {
+    min-height: 36px;
+    padding: 0 15px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    white-space: nowrap;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    background: var(--primary);
+    color: var(--primary-foreground);
+    font-size: .875rem;
+    font-weight: 500;
+    line-height: 1;
+    transition: all .15s ease;
+    user-select: none;
+  }
+
+  .btn:hover { filter: brightness(.94); }
+  .btn:active { filter: brightness(.98); }
+  .btn svg { width: 14px; height: 14px; }
+
+  .btn.default { background: var(--primary); color: var(--primary-foreground); }
+
+  .btn.outline {
+    border-color: var(--input);
+    background: var(--background);
+    color: var(--foreground);
+    box-shadow: 0 1px 2px #00000008;
+  }
+  .btn.outline:hover { background: var(--accent); }
+
+  .btn.ghost { background: transparent; color: var(--foreground); }
+  .btn.ghost:hover { background: var(--accent); }
+
+  .btn.sm { min-height: 32px; padding: 0 12px; border-radius: 7px; font-size: .8rem; gap: 6px; }
+
+  .btn:focus-visible,
+  .model-button:focus-visible,
+  .tab:focus-visible,
+  .timeline-chip:focus-visible,
+  .fork-button:focus-visible,
+  .icon-btn:focus-visible,
+  .back-btn:focus-visible,
+  .add-card:focus-visible,
+  .char-card:focus-visible {
+    outline: 0;
+    box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring) 48%, transparent);
+  }
+
+  /* Composer ------------------------------------------------------ */
+
+  .composer {
+    position: relative;
+    z-index: 2;
+    border-radius: 16px;
+    background: color-mix(in oklch, var(--card) 76%, transparent);
+    backdrop-filter: blur(22px);
+    -webkit-backdrop-filter: blur(22px);
+    box-shadow:
+      0 26px 70px -40px #000,
+      0 1px 0 oklch(1 0 0 / 5%) inset;
+  }
+
+  .composer::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(
+      115deg,
+      oklch(1 0 0 / 12%) 0%,
+      color-mix(in oklch, var(--primary) 52%, transparent) 26%,
+      oklch(1 0 0 / 6%) 50%,
+      color-mix(in oklch, var(--primary) 38%, transparent) 74%,
+      oklch(1 0 0 / 10%) 100%
+    );
+    background-size: 220% 220%;
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+    opacity: .55;
+    transition: opacity .35s ease;
+    animation: edge-drift 16s ease-in-out infinite;
+  }
+
+  .composer:focus-within::before { opacity: 1; }
+
+  @keyframes edge-drift {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+
+  .composer-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 13px 0;
+    flex-wrap: wrap;
+  }
+
+  .composer-body { padding: 10px 15px 0; }
+
+  .composer-textarea {
+    display: block;
+    width: 100%;
+    min-height: 70px;
+    padding: 2px 0;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--foreground);
+    font-family: var(--font-sans);
+    font-size: .88rem;
+    line-height: 1.6;
+    letter-spacing: -.005em;
+    resize: none;
+    overflow-y: auto;
+  }
+
+  .composer-textarea::placeholder {
+    color: var(--muted-foreground);
+    font-style: italic;
+  }
+
+  .composer-textarea:focus-visible { box-shadow: none; }
+
+  .composer-note {
+    padding: 6px 15px 0;
+    color: var(--muted-foreground);
+    font-size: .6rem;
+    line-height: 1.5;
+  }
+
+  .composer-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 9px 13px 11px;
+    flex-wrap: wrap;
+  }
+
+  .composer-actions { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+
+  .key-hint { color: var(--muted-foreground); font-size: .58rem; white-space: nowrap; }
+
+  /* Status row — above the composer, below the popover in stacking. */
+
+  .composer-status {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 11px;
+    margin-bottom: 9px;
+    padding: 10px 13px;
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    background: color-mix(in oklch, var(--card) 62%, transparent);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    animation: fade-in .3s ease-out both;
+  }
+
+  @keyframes fade-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+
+  .setting-name {
+    color: color-mix(in oklch, var(--foreground) 86%, transparent);
+    font-size: .75rem;
+    font-weight: 500;
+  }
+
+  .setting-desc {
+    margin-top: 2px;
+    color: var(--muted-foreground);
+    font-size: .625rem;
+    line-height: 1.35;
+  }
+
+  /* ------------------------------------------------------------
+     Wisp activity indicator
+     ------------------------------------------------------------ */
+
+  @keyframes wisp-breathe { 0%, 100% { opacity: 1; } 50% { opacity: .75; } }
+  @keyframes wisp-float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+  @keyframes wisp-gradient { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+
+  .wisp-orb {
+    width: 28px;
+    height: 28px;
+    flex: none;
+    border-radius: 50%;
+    background: linear-gradient(
+      270deg,
+      var(--wisp-color, var(--primary)),
+      color-mix(in oklch, var(--wisp-color, var(--primary)) 60%, white),
+      var(--wisp-color, var(--primary)),
+      color-mix(in oklch, var(--wisp-color, var(--primary)) 70%, black),
+      var(--wisp-color, var(--primary))
+    );
+    background-size: 300% 300%;
+    box-shadow: 0 0 14px color-mix(in oklch, var(--wisp-color, var(--primary)) 28%, transparent);
+    animation:
+      wisp-breathe 2.8s ease-in-out infinite,
+      wisp-float 3.5s ease-in-out infinite,
+      wisp-gradient 4s ease infinite;
+  }
+
+  .wisp-dots { display: inline-flex; gap: 4px; margin-left: 7px; vertical-align: middle; }
+
+  .wisp-dots i {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--primary);
+    animation: wisp-breathe 2.8s ease-in-out infinite;
+  }
+
+  .wisp-dots i:nth-child(2) { animation-delay: 180ms; }
+  .wisp-dots i:nth-child(3) { animation-delay: 360ms; }
+
+  /* ------------------------------------------------------------
+     Toast
+     ------------------------------------------------------------ */
+
+  .toast {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    z-index: 100;
+    max-width: min(360px, calc(100vw - 40px));
+    padding: 11px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--popover);
+    color: var(--popover-foreground);
+    box-shadow: 0 8px 26px #0003;
+    font-size: .74rem;
+    opacity: 0;
+    transform: translateY(8px);
+    pointer-events: none;
+    transition: all .22s ease;
+  }
+
+  .toast.show { opacity: 1; transform: translateY(0); }
+
+  /* ------------------------------------------------------------
+     Story details dialog (edit title / description, view cover)
+     ------------------------------------------------------------ */
+
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    display: none;
+    place-items: center;
+    padding: 20px;
+    background: #0008;
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+  }
+
+  .modal-backdrop.open {
+    display: grid;
+    animation: fade-in .16s ease-out both;
+  }
+
+  .modal {
+    position: relative;
+    width: min(480px, 100%);
+    max-height: calc(100vh - 40px);
+    overflow-y: auto;
+    padding: 22px;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    background: var(--background);
+    box-shadow: 0 22px 70px #0005;
+    animation: pop-in .18s ease-out both;
+  }
+
+  .modal-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 28px;
+    height: 28px;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--muted-foreground);
+    display: grid;
+    place-items: center;
+    transition: all .15s ease;
+  }
+
+  .modal-close:hover { background: var(--accent); color: var(--foreground); }
+  .modal-close svg { width: 14px; height: 14px; }
+
+  .details-cover {
+    position: relative;
+    aspect-ratio: 3 / 2;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    margin: 14px 0 2px;
+    border: 1px solid color-mix(in oklch, var(--border) 80%, transparent);
+    border-radius: 10px;
+    background:
+      radial-gradient(circle at 30% 20%,
+        color-mix(in oklch, var(--primary) 16%, transparent),
+        transparent 62%),
+      linear-gradient(155deg,
+        color-mix(in oklch, var(--muted) 88%, transparent),
+        color-mix(in oklch, var(--background) 70%, var(--card)));
+    cursor: pointer;
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+
+  .details-cover.drag-over {
+    border-color: color-mix(in oklch, var(--primary) 55%, var(--border));
+    box-shadow: 0 0 0 2px color-mix(in oklch, var(--ring) 22%, transparent);
+  }
+
+  .details-cover.drag-over::after {
+    content: "Drop to set cover";
+    position: absolute;
+    inset: 0;
+    z-index: 2;
+    display: grid;
+    place-items: center;
+    background: color-mix(in oklch, var(--background) 55%, transparent);
+    color: var(--foreground);
+    font-size: .72rem;
+    font-weight: 500;
+    letter-spacing: .02em;
+  }
+
+  .details-cover img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .details-cover-letter {
+    font-family: var(--font-display);
+    font-style: italic;
+    font-size: 2.1rem;
+    line-height: 1;
+    color: color-mix(in oklch, var(--primary) 62%, var(--muted-foreground));
+    user-select: none;
+  }
+
+  .details-cover-note {
+    margin: 0 0 14px;
+    color: var(--muted-foreground);
+    font-size: .6rem;
+  }
+
+  .textarea-field {
+    width: 100%;
+    min-width: 0;
+    min-height: 82px;
+    border: 1px solid var(--input);
+    border-radius: 7px;
+    outline: none;
+    background: color-mix(in oklch, var(--background) 85%, var(--card));
+    color: var(--foreground);
+    padding: 8px 10px;
+    font-size: .75rem;
+    line-height: 1.55;
+    resize: vertical;
+    transition: border-color .15s ease, box-shadow .15s ease;
+  }
+
+  .textarea-field:focus {
+    border-color: color-mix(in oklch, var(--primary) 42%, var(--border));
+    box-shadow: 0 0 0 2px color-mix(in oklch, var(--ring) 18%, transparent);
+  }
+
+  /* ------------------------------------------------------------
+     Reader settings tab + panel (placeholder)
+     ------------------------------------------------------------ */
+
+  .settings-tab {
+    position: absolute;
+    left: 0;
+    top: 14px;
+    z-index: 30;
+    width: 36px;
+    height: 40px;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--border);
+    border-left: 0;
+    border-radius: 0 10px 10px 0;
+    background: color-mix(in oklch, var(--card) 72%, transparent);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    color: var(--muted-foreground);
+    transition: all .15s ease;
+  }
+
+  .settings-tab:hover {
+    color: var(--foreground);
+    border-color: color-mix(in oklch, var(--primary) 32%, var(--border));
+    background: color-mix(in oklch, var(--card) 90%, transparent);
+  }
+
+  /* When expanded the cog keeps its own shape and takes the same lit
+     treatment as a selected rail button — edge highlight plus a soft glow —
+     while the panel floats beside it as a separate box. */
+
+  .settings-tab[aria-expanded="true"] {
+    color: var(--primary);
+    border-color: color-mix(in oklch, var(--primary) 34%, var(--border));
+    background: color-mix(in oklch, var(--primary) 9%, var(--card));
+    box-shadow: 0 0 16px -4px color-mix(in oklch, var(--primary) 45%, transparent);
+  }
+
+  .settings-tab svg { width: 16px; height: 16px; }
+
+  /* A floating card in its own right, mirroring the right-hand panels. */
+
+  .settings-panel {
+    position: absolute;
+    top: 14px;
+    left: 50px;
+    z-index: 25;
+    width: min(320px, calc(100% - 64px));
+    max-height: calc(100% - 28px);
+    overflow-y: auto;
+    padding: 14px;
+    border: 1px solid color-mix(in oklch, var(--border) 85%, transparent);
+    border-radius: 12px;
+    background: color-mix(in oklch, var(--card) 78%, transparent);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    box-shadow: 0 22px 60px -30px #000, 0 1px 0 oklch(1 0 0 / 5%) inset;
+    animation: settings-expand .2s ease-out both;
+  }
+
+  @keyframes settings-expand {
+    from { opacity: 0; transform: translateX(-10px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  /* Breathing room between the heading block and the settings rows. */
+
+  .settings-panel .side-panel-head { margin-bottom: 4px; }
+
+  .settings-card {
+    overflow: hidden;
+    margin-top: 18px;
+    border: 1px solid color-mix(in oklch, var(--border) 78%, transparent);
+    border-radius: 9px;
+  }
+
+  .setting-row {
+    min-height: 49px;
+    padding: 9px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    border-bottom: 1px solid color-mix(in oklch, var(--border) 72%, transparent);
+  }
+
+  .setting-row:last-child { border-bottom: 0; }
+
+  .soon-chip {
+    flex: none;
+    padding: 3px 8px;
+    border: 1px dashed color-mix(in oklch, var(--primary) 30%, var(--border));
+    border-radius: 6px;
+    color: var(--muted-foreground);
+    font-size: .55rem;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+  }
+
+  /* ------------------------------------------------------------
+     Context rail — right side menu (Memory / Lorebook / Gallery)
+     ------------------------------------------------------------ */
+
+  .side-rail {
+    position: absolute;
+    right: 0;
+    top: 14px;
+    z-index: 30;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .rail-btn {
+    width: 36px;
+    height: 36px;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--border);
+    border-right: 0;
+    border-radius: 10px 0 0 10px;
+    background: color-mix(in oklch, var(--card) 72%, transparent);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    color: var(--muted-foreground);
+    transition: all .15s ease;
+  }
+
+  .rail-btn:hover {
+    color: var(--foreground);
+    border-color: color-mix(in oklch, var(--primary) 30%, var(--border));
+    background: color-mix(in oklch, var(--card) 90%, transparent);
+  }
+
+  .rail-btn[aria-selected="true"] {
+    color: var(--primary);
+    border-color: color-mix(in oklch, var(--primary) 34%, var(--border));
+    background: color-mix(in oklch, var(--primary) 9%, var(--card));
+    box-shadow: 0 0 16px -4px color-mix(in oklch, var(--primary) 45%, transparent);
+  }
+
+  .rail-btn svg { width: 15px; height: 15px; }
+
+  .side-panel {
+    position: absolute;
+    top: 14px;
+    right: 50px;
+    z-index: 25;
+    width: min(340px, calc(100% - 64px));
+    max-height: calc(100% - 28px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 14px;
+    border: 1px solid color-mix(in oklch, var(--border) 85%, transparent);
+    border-radius: 12px;
+    background: color-mix(in oklch, var(--card) 78%, transparent);
+    backdrop-filter: blur(18px);
+    -webkit-backdrop-filter: blur(18px);
+    box-shadow: 0 22px 60px -30px #000, 0 1px 0 oklch(1 0 0 / 5%) inset;
+    animation: side-expand .2s ease-out both;
+  }
+
+  @keyframes side-expand {
+    from { opacity: 0; transform: translateX(10px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  .side-panel-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 12px;
+  }
+
+  /* Pin + close always travel as a pair in the top-right corner. */
+  .head-actions {
+    flex: none;
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+  }
+
+  .head-actions .panel-pin { margin: -2px 0 0; }
+  .head-actions .side-close { margin: -2px -4px 0 0; }
+
+  /* Memory -------------------------------------------------------- */
+
+  .memory-area { min-height: 150px; font-size: .78rem; line-height: 1.6; }
+
+  .memory-foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-top: 8px;
+  }
+
+  .memory-count {
+    font-family: var(--font-mono);
+    font-size: .58rem;
+    color: var(--muted-foreground);
+  }
+
+  /* Lorebook ------------------------------------------------------ */
+
+  .lore-add {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding-bottom: 12px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid color-mix(in oklch, var(--border) 72%, transparent);
+  }
+
+  .lore-add .textarea-field { min-height: 58px; }
+
+  .lore-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .lore-entry {
+    position: relative;
+    padding: 9px 30px 10px 11px;
+    border: 1px solid color-mix(in oklch, var(--border) 78%, transparent);
+    border-radius: 9px;
+    background: color-mix(in oklch, var(--background) 55%, var(--card));
+    transition: border-color .15s ease;
+  }
+
+  .lore-entry.active {
+    border-color: color-mix(in oklch, var(--primary) 40%, var(--border));
+  }
+
+  .lore-keys {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    margin-bottom: 6px;
+  }
+
+  .lore-key {
+    padding: 2px 7px;
+    border-radius: 5px;
+    background: color-mix(in oklch, var(--primary) 12%, transparent);
+    color: color-mix(in oklch, var(--primary) 80%, var(--foreground));
+    font-family: var(--font-mono);
+    font-size: .58rem;
+  }
+
+  .lore-entry.active .lore-key {
+    background: color-mix(in oklch, var(--primary) 26%, transparent);
+  }
+
+  .lore-text {
+    font-size: .7rem;
+    line-height: 1.55;
+    color: var(--foreground);
+  }
+
+  .lore-flag {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin-top: 7px;
+    color: var(--muted-foreground);
+    font-size: .54rem;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+  }
+
+  .lore-flag i {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: var(--primary);
+    display: inline-block;
+  }
+
+  .lore-del {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 18px;
+    height: 18px;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: 5px;
+    background: transparent;
+    color: var(--muted-foreground);
+    transition: color .14s ease, background .14s ease;
+  }
+
+  .lore-del:hover { color: #fff; background: color-mix(in oklch, var(--destructive) 72%, transparent); }
+  .lore-del.armed { color: #fff; background: var(--destructive); }
+  .lore-del svg { width: 10px; height: 10px; }
+
+  .lore-empty,
+  .gallery-empty {
+    padding: 18px 12px;
+    border: 1px dashed color-mix(in oklch, var(--primary) 30%, var(--border));
+    border-radius: 9px;
+    color: var(--muted-foreground);
+    font-size: .66rem;
+    line-height: 1.55;
+    text-align: center;
+  }
+
+  /* Gallery — bento grid ------------------------------------------ */
+
+  .gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-auto-rows: 62px;
+    grid-auto-flow: dense;
+    gap: 7px;
+  }
+
+  .gallery-tile {
+    position: relative;
+    border-radius: 9px;
+    overflow: hidden;
+    cursor: zoom-in;
+    background: color-mix(in oklch, var(--background) 70%, var(--card));
+    /* Edge highlight — light inner hairline, brightest along the top. */
+    box-shadow:
+      inset 0 0 0 1px color-mix(in oklch, white 13%, transparent),
+      inset 0 1px 0 color-mix(in oklch, white 22%, transparent);
+    transition: box-shadow .15s ease;
+  }
+
+  .gallery-tile:hover {
+    box-shadow:
+      inset 0 0 0 1.5px color-mix(in oklch, var(--primary) 60%, transparent),
+      inset 0 1px 0 color-mix(in oklch, white 22%, transparent);
+  }
+
+  .gallery-tile img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  .gallery-tile.span-2x { grid-column: span 2; }
+  .gallery-tile.span-2y { grid-row: span 2; }
+  .gallery-tile.span-2x.span-2y { grid-column: span 2; grid-row: span 2; }
+
+  .gallery-del {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    width: 20px;
+    height: 20px;
+    display: grid;
+    place-items: center;
+    border: 0;
+    border-radius: 6px;
+    background: color-mix(in oklch, #0d0b09 78%, transparent);
+    color: var(--muted-foreground);
+    opacity: 0;
+    cursor: pointer;
+    transition: opacity .15s ease, color .14s ease, background .14s ease;
+  }
+
+  .gallery-tile:hover .gallery-del,
+  .gallery-del:focus-visible { opacity: 1; }
+  .gallery-del:hover { color: #fff; background: color-mix(in oklch, var(--destructive) 72%, transparent); }
+  .gallery-del.armed { color: #fff; background: var(--destructive); opacity: 1; }
+  .gallery-del svg { width: 10px; height: 10px; }
+
+  .gallery-drop.drag-over {
+    outline: 1.5px dashed color-mix(in oklch, var(--primary) 55%, transparent);
+    outline-offset: 4px;
+    border-radius: 6px;
+  }
+
+  /* Lightbox ------------------------------------------------------ */
+
+  .lightbox {
+    position: fixed;
+    inset: 0;
+    z-index: 120;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+    background: color-mix(in oklch, var(--background) 72%, transparent);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity .2s ease, visibility .2s ease;
+  }
+
+  .lightbox.open { opacity: 1; visibility: visible; }
+
+  .lightbox img {
+    max-width: min(1100px, 94vw);
+    max-height: 88vh;
+    border-radius: 12px;
+    box-shadow:
+      0 40px 120px -30px #000,
+      inset 0 0 0 1px color-mix(in oklch, white 14%, transparent),
+      inset 0 1px 0 color-mix(in oklch, white 25%, transparent);
+    animation: lightbox-in .24s ease-out both;
+  }
+
+  @keyframes lightbox-in {
+    from { opacity: 0; transform: scale(.96); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  .lightbox-close {
+    position: absolute;
+    top: 18px;
+    right: 18px;
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--border);
+    border-radius: 50%;
+    background: color-mix(in oklch, var(--card) 80%, transparent);
+    color: var(--foreground);
+    cursor: pointer;
+    transition: border-color .15s ease;
+  }
+
+  .lightbox-close:hover { border-color: color-mix(in oklch, var(--primary) 40%, var(--border)); }
+  .lightbox-close svg { width: 14px; height: 14px; }
+
+  /* Prose editing -------------------------------------------------- */
+
+  .edit-chip {
+    position: fixed;
+    z-index: 80;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 5px 11px;
+    border: 1px solid color-mix(in oklch, var(--primary) 40%, var(--border));
+    border-radius: 999px;
+    background: color-mix(in oklch, var(--card) 88%, transparent);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    color: var(--foreground);
+    font-size: .68rem;
+    font-weight: 500;
+    box-shadow: 0 10px 30px -14px #000;
+    cursor: pointer;
+    animation: chip-in .14s ease-out both;
+  }
+
+  .edit-chip svg { width: 11px; height: 11px; color: var(--primary); }
+
+  @keyframes chip-in {
+    from { opacity: 0; transform: translateY(3px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  /* Inline manuscript editing — no new surfaces, just the prose itself */
+
+  .prose-content[contenteditable="true"] {
+    outline: none;
+    cursor: text;
+    caret-color: var(--primary);
+    padding: 10px 14px;
+    margin: -10px -14px;
+    border-radius: 10px;
+    background: color-mix(in oklch, var(--primary) 4%, transparent);
+    box-shadow: inset 2px 0 0 color-mix(in oklch, var(--primary) 32%, transparent);
+    transition: background .2s ease, box-shadow .2s ease;
+  }
+
+  .prose-content[contenteditable="true"] p { cursor: text; }
+
+  .prose-content[contenteditable="false"] {
+    background: transparent;
+    transition: background .2s ease;
+  }
+
+  /* Panel pin — keeps a side panel open until unpinned */
+
+  .panel-pin {
+    flex: none;
+    width: 24px;
+    height: 24px;
+    display: grid;
+    place-items: center;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--muted-foreground);
+    transition: all .15s ease;
+  }
+
+  .panel-pin:hover {
+    color: var(--foreground);
+    border-color: color-mix(in oklch, var(--primary) 38%, var(--border));
+  }
+
+  .panel-pin.active {
+    color: var(--primary);
+    border-color: color-mix(in oklch, var(--primary) 55%, var(--border));
+    background: color-mix(in oklch, var(--primary) 12%, transparent);
+    box-shadow: 0 0 12px -1px color-mix(in oklch, var(--primary) 55%, transparent);
+  }
+
+  .panel-pin svg { width: 12px; height: 12px; }
+
+  /* Gallery stays clear of the prose, but the tiles themselves read larger:
+     two roomy columns instead of three narrow ones. */
+  .side-panel.wide { width: min(430px, calc(100% - 64px)); }
+  .side-panel.wide .gallery-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-rows: 138px;
+    gap: 9px;
+  }
+
+  /* Live generation — streaming prose -------------------------------- */
+
+  .stream-block.streaming > p:last-child::after {
+    content: '';
+    display: inline-block;
+    width: .5em;
+    height: 1em;
+    margin-left: .18em;
+    vertical-align: -.12em;
+    border-radius: 1px;
+    background: color-mix(in oklch, var(--primary) 75%, transparent);
+    animation: caret-blink 1s steps(2, start) infinite;
+  }
+
+  @keyframes caret-blink { to { visibility: hidden; } }
+
+  /* A preview hovers next to the manuscript with a marker rule until
+     it is kept or discarded. */
+  .stream-block.preview {
+    padding-left: 14px;
+    border-left: 2px solid color-mix(in oklch, var(--primary) 45%, transparent);
+  }
+
+  .preview-actions { display: flex; gap: 7px; margin-top: 9px; }
+
+  .btn.stopping {
+    background: color-mix(in oklch, var(--destructive) 30%, var(--primary));
+  }
+
+  .btn .icon-stop { display: none; }
+  .btn.stopping .icon-stop { display: block; }
+  .btn.stopping .icon-send { display: none; }
+
+  /* ----------------------------------------------------------
+     Settings tab — banned words, prose width, text size
+     ---------------------------------------------------------- */
+
+  .settings-section { margin-top: 16px; }
+  .settings-section:first-of-type { margin-top: 0; }
+
+  .settings-label {
+    margin-bottom: 8px;
+    font-size: .62rem;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
+  }
+
+  .settings-note {
+    margin: -4px 0 10px;
+    font-size: .66rem;
+    line-height: 1.55;
+    color: var(--muted-foreground);
+  }
+
+  .banned-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 8px;
+  }
+
+  .banned-chips:empty { display: none; }
+
+  .banned-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 5px 3px 8px;
+    border-radius: 6px;
+    background: color-mix(in oklch, var(--destructive) 13%, transparent);
+    color: color-mix(in oklch, var(--destructive) 55%, var(--foreground));
+    font-family: var(--font-mono);
+    font-size: .62rem;
+  }
+
+  .banned-chip button {
+    border: 0;
+    padding: 1px 3px;
+    background: transparent;
+    color: inherit;
+    cursor: pointer;
+    border-radius: 4px;
+    font-size: .72rem;
+    line-height: 1;
+  }
+
+  .banned-chip button:hover { background: color-mix(in oklch, var(--destructive) 30%, transparent); }
+
+  .banned-input { width: 100%; }
+
+  .seg-row { display: flex; gap: 6px; margin-bottom: 16px; }
+
+  .seg-btn {
+    flex: 1;
+    padding: 6px 4px;
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    background: transparent;
+    color: var(--muted-foreground);
+    font-size: .68rem;
+    cursor: pointer;
+    transition: all .15s ease;
+  }
+
+  .seg-btn:hover {
+    color: var(--foreground);
+    border-color: color-mix(in oklch, var(--primary) 30%, var(--border));
+  }
+
+  .seg-btn[aria-pressed="true"] {
+    color: var(--primary);
+    border-color: color-mix(in oklch, var(--primary) 45%, var(--border));
+    background: color-mix(in oklch, var(--primary) 10%, transparent);
+  }
+
+  /* ------------------------------------------------------------
+     Responsive
+     ------------------------------------------------------------ */
+
+  @media (max-width: 1240px) { .card-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  @media (max-width: 1020px) { .card-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  @media (max-width: 760px) {
+    .card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .brand-word { display: none; }
+    .brand-mark { width: 25px; height: 25px; }
+    .library-view { padding: 22px 14px 64px; }
+    .model-name { max-width: 14ch; }
+    .model-temp { display: none; }
+    .timeline-chip { min-width: 122px; }
+  }
+  @media (max-width: 480px) {
+    .card-grid { grid-template-columns: minmax(0, 1fr); }
+    .prose-stage { padding: 20px 14px 12px; }
+    .prose-content { font-size: 1rem; }
+    .composer-head { padding: 10px 11px 0; }
+    .composer-body { padding: 9px 12px 0; }
+    .composer-note { padding: 6px 12px 0; }
+    .composer-foot { padding: 9px 11px 11px; }
+    .key-hint { display: none; }
+    .composer-actions { width: 100%; }
+    .composer-actions .btn { flex: 1; }
+    .timeline-rail { gap: 7px; padding: 8px 11px; }
+    .timeline-chip { min-width: 112px; padding: 6px 10px; }
+    .tl-meta { display: none; }
+    .fork-button { padding: 0 11px; }
+    .side-panel { width: calc(100% - 58px); }
+    .gallery-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+
+  /* Touch devices have no hover, so keep card actions visible. */
+  @media (hover: none) {
+    .story-actions { opacity: 1; transform: none; }
+    .tl-delete { opacity: 1; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      scroll-behavior: auto !important;
+      animation-duration: .01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: .01ms !important;
+    }
+    .wisp-orb { animation: none !important; }
+  }
+</style>
+</head>
+<body>
+
+  <!-- Starfield backdrop ---------------------------------------- -->
+  <div class="starfield" id="starfield" aria-hidden="true"></div>
+  <div class="orbit-field" id="orbitField" aria-hidden="true"></div>
+
+  <!-- Top bar ---------------------------------------------------- -->
+  <header class="topbar">
+
+    <div class="topbar-library" id="topbarLibrary">
+      <a class="brand" href="#" id="brandHome" aria-label="Errata home">
+        <svg class="brand-mark" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M0 -8 C1.6 -5.2 1.6 -1.2 0 .8 C-1.6 -1.2 -1.6 -5.2 0 -8 Z" fill="currentColor" transform="translate(12 12) rotate(0) scale(1)"/>
+          <path d="M0 -8 C1.6 -5.2 1.6 -1.2 0 .8 C-1.6 -1.2 -1.6 -5.2 0 -8 Z" fill="currentColor" transform="translate(12 12) rotate(60) scale(.7)"/>
+          <path d="M0 -8 C1.6 -5.2 1.6 -1.2 0 .8 C-1.6 -1.2 -1.6 -5.2 0 -8 Z" fill="currentColor" transform="translate(12 12) rotate(120) scale(1)"/>
+          <path d="M0 -8 C1.6 -5.2 1.6 -1.2 0 .8 C-1.6 -1.2 -1.6 -5.2 0 -8 Z" fill="currentColor" transform="translate(12 12) rotate(180) scale(.7)"/>
+          <path d="M0 -8 C1.6 -5.2 1.6 -1.2 0 .8 C-1.6 -1.2 -1.6 -5.2 0 -8 Z" fill="currentColor" transform="translate(12 12) rotate(240) scale(1)"/>
+          <path d="M0 -8 C1.6 -5.2 1.6 -1.2 0 .8 C-1.6 -1.2 -1.6 -5.2 0 -8 Z" fill="currentColor" transform="translate(12 12) rotate(300) scale(.7)"/>
+          <circle cx="12" cy="12" r="1.6" fill="currentColor"/>
+        </svg>
+        <span class="brand-word">Errata</span>
+      </a>
+
+      <div class="tabs-bar" role="tablist" aria-label="Library sections">
+        <button class="tab" role="tab" id="tabStories" aria-selected="true"
+                aria-controls="storiesPanel" data-library-tab="stories" data-cuelume-toggle>Stories</button>
+        <button class="tab" role="tab" id="tabCharacters" aria-selected="false"
+                aria-controls="charactersPanel" data-library-tab="characters" data-cuelume-toggle>Characters</button>
+      </div>
+
+      <div></div>
+    </div>
+
+    <div class="topbar-reader" id="topbarReader" hidden>
+      <button class="back-btn" id="backButton" aria-label="Back to library" data-cuelume-press data-cuelume-release>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="m15 5-7 7 7 7"/>
+        </svg>
+      </button>
+      <span class="reader-title" id="readerTitle"></span>
+    </div>
+
+  </header>
+
+  <!-- App main --------------------------------------------------- -->
+  <div class="app-main">
+
+    <!-- Library ------------------------------------------------- -->
+    <div class="library-view" id="libraryView">
+
+      <div class="library-inner">
+
+        <section id="storiesPanel" role="tabpanel" aria-labelledby="tabStories">
+          <div class="view-head">
+            <div>
+              <h1 class="view-title">Stories</h1>
+              <p class="view-sub" id="storyCount">0 stories</p>
+            </div>
+            <button class="btn ghost sm" id="importBtn" type="button" data-cuelume-press data-cuelume-release>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                <path d="M12 15V4M8 8l4-4 4 4M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/>
+              </svg>
+              Import
+            </button>
+          </div>
+          <div class="card-grid" id="storyGrid"></div>
+        </section>
+
+        <section id="charactersPanel" role="tabpanel" aria-labelledby="tabCharacters" hidden>
+          <div class="view-head">
+            <div>
+              <h1 class="view-title">Characters</h1>
+              <p class="view-sub">Placeholder cast — character sheets arrive in the next pass.</p>
+            </div>
+          </div>
+          <div class="card-grid" id="characterGrid"></div>
+        </section>
+
+      </div>
+    </div>
+
+    <!-- Reader -------------------------------------------------- -->
+    <div class="reader-view" id="readerView" hidden>
+
+      <nav class="timeline-rail" aria-label="Story timelines">
+        <div class="timeline-scroller" id="timelineScroller" role="group" aria-label="Timelines"></div>
+        <button class="fork-button" id="forkButton" type="button"
+                data-cuelume-press data-cuelume-release
+                aria-label="Fork a new timeline">
+          Fork <span class="fork-plus" aria-hidden="true">+</span>
+        </button>
+      </nav>
+
+      <div class="workspace">
+
+        <button class="settings-tab" id="settingsTab" type="button" aria-expanded="false"
+                aria-controls="settingsPanel" aria-label="Reader settings"
+                data-cuelume-press data-cuelume-release>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+        </button>
+
+        <section class="settings-panel" id="settingsPanel" role="region"
+                 aria-label="Reader settings" hidden>
+          <div class="side-panel-head">
+            <div>
+              <div class="panel-title">Reader settings</div>
+              <p class="panel-desc">Placeholder — reader preferences will live here in a future pass.</p>
+            </div>
+            <div class="head-actions">
+              <button class="panel-pin" id="settingsPin" type="button" aria-label="Pin settings panel"
+                      aria-pressed="false" title="Pin panel" data-cuelume-press data-cuelume-release>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                  <path d="M12 17v5"/>
+                  <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1z"/>
+                </svg>
+              </button>
+              <button class="icon-btn side-close" id="settingsClose" type="button" aria-label="Close settings"
+                      data-cuelume-press data-cuelume-release>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path d="M18 6 6 18M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div class="settings-section">
+            <div class="settings-label">Banned words</div>
+            <p class="settings-note">Antislop — the writer throws a passage back and rewrites the moment it uses one of these words.</p>
+            <div class="banned-chips" id="bannedChips"></div>
+            <input id="bannedInput" class="field mono banned-input" type="text" spellcheck="false" autocomplete="off"
+                   placeholder="Type a word, press Enter" aria-label="Add banned word">
+          </div>
+
+          <div class="settings-section">
+            <div class="settings-label">Prose width</div>
+            <div class="seg-row" id="widthSeg" role="group" aria-label="Prose width">
+              <button class="seg-btn" type="button" data-width="narrow" aria-pressed="false">Narrow</button>
+              <button class="seg-btn" type="button" data-width="medium" aria-pressed="false">Medium</button>
+              <button class="seg-btn" type="button" data-width="comfortable" aria-pressed="false">Comfortable</button>
+            </div>
+            <div class="settings-label">Text size</div>
+            <div class="seg-row" id="sizeSeg" role="group" aria-label="Text size">
+              <button class="seg-btn" type="button" data-size="xs" aria-pressed="false">XS</button>
+              <button class="seg-btn" type="button" data-size="s" aria-pressed="false">S</button>
+              <button class="seg-btn" type="button" data-size="m" aria-pressed="false">M</button>
+              <button class="seg-btn" type="button" data-size="l" aria-pressed="false">L</button>
+            </div>
+          </div>
+
+          <div class="settings-section">
+            <div class="settings-label">Coming later</div>
+            <div class="settings-card">
+              <div class="setting-row">
+                <div>
+                  <div class="setting-name">Reading sounds</div>
+                  <div class="setting-desc">Quiet interface cues while you read and write.</div>
+                </div>
+                <span class="soon-chip">Soon</span>
+              </div>
+              <div class="setting-row">
+                <div>
+                  <div class="setting-name">Auto-scroll on generate</div>
+                  <div class="setting-desc">Follow new prose as it arrives.</div>
+                </div>
+                <span class="soon-chip">Soon</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Context rail: Memory / Lorebook / Gallery -->
+        <aside class="side-rail" id="sideRail" role="tablist" aria-label="Story context menu">
+          <button class="rail-btn" id="railMemory" type="button" role="tab" aria-selected="false"
+                  aria-controls="sidePanel" data-side-tab="memory" title="Memory" aria-label="Memory">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+              <path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/>
+              <path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z"/>
+              <path d="M12 5v13"/>
+            </svg>
+          </button>
+          <button class="rail-btn" id="railLorebook" type="button" role="tab" aria-selected="false"
+                  aria-controls="sidePanel" data-side-tab="lorebook" title="Lorebook" aria-label="Lorebook">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+              <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/>
+            </svg>
+          </button>
+          <button class="rail-btn" id="railGallery" type="button" role="tab" aria-selected="false"
+                  aria-controls="sidePanel" data-side-tab="gallery" title="Gallery" aria-label="Gallery">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true">
+              <rect x="3" y="5" width="18" height="14" rx="2"/>
+              <circle cx="8.5" cy="10" r="1.4"/>
+              <path d="m21 16-5-5-4 4-3-3-6 6"/>
+            </svg>
+          </button>
+        </aside>
+
+        <section class="side-panel" id="sidePanel" role="tabpanel" aria-label="Story context" hidden>
+          <div class="side-panel-head">
+            <div>
+              <div class="panel-title" id="sidePanelTitle">Memory</div>
+              <p class="panel-desc" id="sidePanelDesc"></p>
+            </div>
+            <div class="head-actions">
+              <button class="panel-pin" id="sidePin" type="button" aria-label="Pin panel"
+                      aria-pressed="false" title="Pin panel" data-cuelume-press data-cuelume-release>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                  <path d="M12 17v5"/>
+                  <path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1z"/>
+                </svg>
+              </button>
+              <button class="icon-btn side-close" id="sideClose" type="button" aria-label="Close panel"
+                      data-cuelume-press data-cuelume-release>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                  <path d="M18 6 6 18M6 6l12 12"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="side-page" id="pageMemory">
+            <textarea id="memoryInput" class="textarea-field memory-area" aria-label="Story memory"
+                      placeholder="Everything written here stays in the model's context at all times — world rules, promises, tone, open threads…"></textarea>
+            <div class="memory-foot">
+              <span class="memory-count" id="memoryCount">0 characters</span>
+              <span class="soon-chip">Always in context</span>
+            </div>
+          </div>
+
+          <div class="side-page" id="pageLorebook" hidden>
+            <div class="lore-add">
+              <input id="loreKeys" class="field mono" type="text" spellcheck="false" autocomplete="off"
+                     placeholder="Key terms, comma separated" aria-label="Lorebook key terms">
+              <textarea id="loreEntry" class="textarea-field" spellcheck="false" aria-label="Lorebook entry"
+                        placeholder="Injected into memory the moment a key term is spoken in the story."></textarea>
+              <button class="btn sm" id="loreAddBtn" type="button" data-cuelume-press data-cuelume-release>Add entry</button>
+            </div>
+            <div class="lore-list" id="loreList"></div>
+          </div>
+
+          <div class="side-page" id="pageGallery" hidden>
+            <div class="gallery-drop" id="galleryDrop">
+              <div class="gallery-grid" id="galleryGrid"></div>
+              <div class="gallery-empty" id="galleryEmpty">Drag images here — or click to browse. Drop as many as you like at once.</div>
+            </div>
+          </div>
+        </section>
+
+        <section class="prose-stage" id="proseStage" aria-label="Story prose">
+          <div class="prose-inner">
+            <h1 class="reader-page-title"><button class="title-link" id="readerPageTitle" type="button"
+                  title="Edit story details"></button></h1>
+            <div class="prose-content" id="proseContent"></div>
+          </div>
+        </section>
+
+        <div class="composer-dock">
+          <div class="dock-inner">
+
+            <div class="composer-status" id="composerStatus" hidden role="status" aria-live="polite">
+              <div class="wisp-orb" style="--wisp-color: var(--primary)" aria-hidden="true"></div>
+              <div>
+                <div class="setting-name" id="statusTitle">Composing<span class="wisp-dots"><i></i><i></i><i></i></span></div>
+                <div class="setting-desc" id="statusDesc">Reading fragments, story direction and recent prose.</div>
+              </div>
+            </div>
+
+            <section class="composer" id="composer" aria-label="Writing prompt composer">
+
+              <div class="composer-head">
+                <div class="tabs-bar" role="tablist" aria-label="Generation mode">
+                  <button class="tab" role="tab" id="tabGuided" aria-selected="true" aria-controls="promptPanel"
+                          data-mode="guided" data-cuelume-toggle>Guided generation</button>
+                  <button class="tab" role="tab" id="tabProse" aria-selected="false" aria-controls="promptPanel"
+                          data-mode="prose" data-cuelume-toggle>Direct prose</button>
+                </div>
+
+                <div class="model-cluster">
+                  <button class="model-button" id="modelButton" aria-expanded="false" aria-controls="modelPopover"
+                          aria-label="Model settings" data-cuelume-press data-cuelume-release>
+                    <span class="tiny-dot" aria-hidden="true"></span>
+                    <span class="model-name" id="modelNameLabel">gpt-4o-mini</span>
+                    <span class="model-temp mono" id="modelTempLabel">0.80</span>
+                    <svg class="model-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                      <path d="m6 9 6 6 6-6"/>
+                    </svg>
+                  </button>
+
+                  <div class="model-popover" id="modelPopover" role="dialog" aria-label="Model settings">
+                    <div class="popover-head">
+                      <div class="panel-title">Model settings</div>
+                      <p class="panel-desc">Stored in this browser only. Requests go straight from the page to your OpenAI-compatible endpoint.</p>
+                    </div>
+
+                    <label class="field-group" for="modelInput">
+                      <span class="field-label">Model</span>
+                      <input id="modelInput" class="field" type="text" spellcheck="false" autocomplete="off" placeholder="gpt-4o-mini">
+                    </label>
+
+                    <label class="field-group" for="apiUrlInput">
+                      <span class="field-label">API URL</span>
+                      <input id="apiUrlInput" class="field mono" type="url" spellcheck="false" autocomplete="off" placeholder="https://api.openai.com/v1">
+                    </label>
+
+                    <label class="field-group" for="apiKeyInput">
+                      <span class="field-label">API key <span class="small-label">· optional</span></span>
+                      <input id="apiKeyInput" class="field mono" type="password" spellcheck="false" autocomplete="off" placeholder="sk-…">
+                    </label>
+
+                    <div class="field-group">
+                      <div class="field-row">
+                        <span class="field-label" style="margin:0">Temperature</span>
+                        <span class="mono small-label" id="tempValue">0.80</span>
+                      </div>
+                      <input id="tempRange" class="range" type="range" min="0" max="2" step="0.05" value="0.8"
+                             aria-label="Temperature">
+                    </div>
+
+                    <div class="popover-foot">
+                      <span class="small-label" id="modelSaved">Saved</span>
+                      <button class="btn sm" id="modelDone" data-cuelume-press data-cuelume-release>Done</button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="composer-body" id="promptPanel" role="tabpanel" aria-labelledby="tabGuided">
+                <textarea id="promptInput" class="composer-textarea" rows="3"
+                          placeholder="Describe the beat you want next. The prewriter will distil context and ask a few questions before writing."></textarea>
+              </div>
+
+              <div class="composer-note" id="modeHint">Guided generation · clarifying questions come before the prose.</div>
+
+              <div class="composer-foot">
+                <div class="composer-actions">
+                  <button class="btn sm" id="generateBtn" data-cuelume-press data-cuelume-release>
+                    <svg class="icon-send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                      <path d="m5 12 14-7-4 14-3-6z"/>
+                    </svg>
+                    <svg class="icon-stop" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                      <rect x="6.5" y="6.5" width="11" height="11" rx="1.5"/>
+                    </svg>
+                    <span id="generateLabel">Generate</span>
+                  </button>
+                  <button class="btn ghost sm" id="previewBtn" data-cuelume-press data-cuelume-release>Preview</button>
+                </div>
+                <span class="key-hint">Ctrl + Enter</span>
+              </div>
+
+            </section>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Story details dialog --------------------------------------- -->
+  <div class="modal-backdrop" id="detailsBackdrop">
+    <div class="modal" role="dialog" aria-modal="true" aria-labelledby="detailsHeading">
+      <button class="modal-close" id="detailsCloseBtn" type="button" aria-label="Close story details"
+              data-cuelume-press data-cuelume-release>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M18 6 6 18M6 6l12 12"/>
+        </svg>
+      </button>
+      <div class="panel-title" id="detailsHeading">Story details</div>
+      <p class="panel-desc">Names and description feed the writing context. Changes stay on this device.</p>
+
+      <div class="details-cover" id="detailsCover" aria-label="Story cover image"></div>
+      <p class="details-cover-note" id="detailsCoverNote"></p>
+
+      <label class="field-group" for="detailsTitleInput">
+        <span class="field-label">Title</span>
+        <input id="detailsTitleInput" class="field" type="text" spellcheck="false" autocomplete="off"
+               placeholder="Untitled Story">
+      </label>
+
+      <label class="field-group" for="detailsDescInput">
+        <span class="field-label">Description</span>
+        <textarea id="detailsDescInput" class="textarea-field"
+                  placeholder="A sentence or two about where this story is going."></textarea>
+      </label>
+
+      <div class="popover-foot">
+        <button class="btn ghost sm" id="detailsCancel" data-cuelume-press data-cuelume-release>Cancel</button>
+        <button class="btn sm" id="detailsSave" data-cuelume-press data-cuelume-release>Save details</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Gallery lightbox -------------------------------------------- -->
+  <div class="lightbox" id="lightbox" role="dialog" aria-modal="true" aria-label="Gallery image">
+    <img id="lightboxImg" alt="">
+    <button class="lightbox-close" id="lightboxClose" type="button" aria-label="Close image"
+            data-cuelume-press data-cuelume-release>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M18 6 6 18M6 6l12 12"/>
+      </svg>
+    </button>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+  /* ==============================================================
+     Storage helpers
+     ============================================================== */
+
+  function getPref(key) {
+    try { return window.localStorage.getItem(key); } catch (_) { return null; }
+  }
+  function setPref(key, value) {
+    try { window.localStorage.setItem(key, value); return true; } catch (_) { return false; }
+  }
+
+  const LIB_KEY = 'errata-library';
+  const MODEL_KEY = 'errata-model-config';
+  const SOUND_KEY = 'errata-interaction-sounds';
+
+  /* ==============================================================
+     Starfield
+     ============================================================== */
+
+  const STARFIELD_MAX = 150;
+  const STARFIELD_MIN = 60;
+
+  function buildStarfield() {
+    const layer = document.getElementById('starfield');
+    if (!layer) return;
+
+    const area = window.innerWidth * window.innerHeight;
+    const count = Math.max(STARFIELD_MIN, Math.min(STARFIELD_MAX, Math.round(area / 12000)));
+
+    const frag = document.createDocumentFragment();
+
+    for (let i = 0; i < count; i++) {
+      const star = document.createElement('span');
+      star.className = 'star';
+
+      const roll = Math.random();
+      const size = roll < 0.84 ? 1 : roll < 0.97 ? 1.5 : 2;
+
+      star.style.left = (Math.random() * 100).toFixed(2) + '%';
+      star.style.top = (Math.random() * 100).toFixed(2) + '%';
+      star.style.width = size + 'px';
+      star.style.height = size + 'px';
+
+      star.style.setProperty('--min-o', (0.03 + Math.random() * 0.07).toFixed(3));
+      star.style.setProperty('--max-o', (0.28 + Math.random() * 0.42).toFixed(3));
+
+      star.style.animationDuration = (4 + Math.random() * 7).toFixed(2) + 's';
+      star.style.animationDelay = (-Math.random() * 12).toFixed(2) + 's';
+
+      frag.appendChild(star);
+    }
+
+    layer.replaceChildren(frag);
+  }
+
+  buildStarfield();
+
+  /* ==============================================================
+     Orbit field — the library backdrop: overlapping circles spinning
+     slowly around a few off-centre anchors. Thin, regular and bold
+     strokes mix with dotted and dashed rings; some carry a small
+     satellite dot riding the circumference.
+     ============================================================== */
+
+  function buildOrbitField() {
+    const layer = document.getElementById('orbitField');
+    if (!layer) return;
+
+    const W = Math.max(320, window.innerWidth);
+    const H = Math.max(320, window.innerHeight);
+    const rand = (a, b) => a + Math.random() * (b - a);
+    const reduced = window.matchMedia
+      && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // Asymmetric anchors, deliberately off centre.
+    const anchors = [
+      { x: W * rand(0.08, 0.30), y: H * rand(0.10, 0.40) },
+      { x: W * rand(0.62, 0.95), y: H * rand(0.05, 0.45) },
+      { x: W * rand(0.25, 0.75), y: H * rand(0.55, 0.95) }
+    ];
+
+    const STYLES = [
+      { w: 0.8, dash: null },                   // thin
+      { w: 1.4, dash: null },                   // regular
+      { w: 2.6, dash: null },                   // bold
+      { w: 1.2, dash: '0.1 9', cap: 'round' },  // dotted
+      { w: 1.1, dash: '16 12' }                 // dashed
+    ];
+
+    const RING_COUNT = 17;
+    let rings = '';
+
+    for (let i = 0; i < RING_COUNT; i++) {
+      const anchor = anchors[i % anchors.length];
+      const cx = Math.round(anchor.x + rand(-0.24, 0.24) * W);
+      const cy = Math.round(anchor.y + rand(-0.24, 0.24) * H);
+      const r = Math.round(rand(40, Math.min(W, H) * 0.46));
+      // First five rings guarantee one of each stroke style, so every
+      // rebuild shows thin, regular, bold, dotted and dashed lines.
+      const style = i < STYLES.length ? STYLES[i] : STYLES[Math.floor(Math.random() * STYLES.length)];
+      const opacity = rand(0.05, 0.15).toFixed(3);
+      const dur = Math.round(rand(50, 160));
+      const reverse = Math.random() < 0.45;
+
+      let inner =
+        '<circle class="orbit-ring" cx="' + cx + '" cy="' + cy + '" r="' + r + '"' +
+        ' style="stroke-width:' + style.w + ';opacity:' + opacity + '"' +
+        (style.dash ? ' stroke-dasharray="' + style.dash + '"' : '') +
+        (style.cap ? ' stroke-linecap="' + style.cap + '"' : '') +
+        '/>';
+
+      // A satellite dot riding the rim makes the spin legible.
+      if (!reduced && Math.random() < 0.4) {
+        const sat = rand(1.6, 3.2).toFixed(1);
+        inner += '<circle class="orbit-dot" cx="' + (cx + r) + '" cy="' + cy + '" r="' + sat + '"'
+          + ' style="opacity:' + Math.min(0.3, parseFloat(opacity) + 0.06).toFixed(3) + '"/>';
+      }
+
+      const from = reverse ? 360 : 0;
+      const to = reverse ? 0 : 360;
+      rings += '<g>'
+        + (reduced ? '' : '<animateTransform attributeName="transform" attributeType="XML" type="rotate"'
+          + ' from="' + from + ' ' + cx + ' ' + cy + '"'
+          + ' to="' + to + ' ' + cx + ' ' + cy + '"'
+          + ' dur="' + dur + 's" repeatCount="indefinite"/>')
+        + inner
+        + '</g>';
+    }
+
+    layer.innerHTML = '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid slice" aria-hidden="true">'
+      + rings + '</svg>';
+  }
+
+  // Library pages spin circles; the reader keeps its starfield.
+  function setBackdrop(name) {
+    const stars = document.getElementById('starfield');
+    const orbits = document.getElementById('orbitField');
+    if (stars) stars.hidden = name !== 'reader';
+    if (orbits) orbits.hidden = name !== 'library';
+  }
+
+  buildOrbitField();
+  setBackdrop('library');
+
+  let starResizeTimer = null;
+  window.addEventListener('resize', () => {
+    clearTimeout(starResizeTimer);
+    starResizeTimer = setTimeout(() => {
+      buildStarfield();
+      buildOrbitField();
+    }, 320);
+  });
+
+  /* ==============================================================
+     Toast
+     ============================================================== */
+
+  const toastEl = document.getElementById('toast');
+  let toastTimer = null;
+  function showToast(message) {
+    toastEl.textContent = message;
+    toastEl.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toastEl.classList.remove('show'), 2800);
+  }
+
+  /* ==============================================================
+     Cuelume 0.1.2 — interaction sounds
+     ============================================================== */
+
+  let soundEnabled = getPref(SOUND_KEY) !== 'false';
+  let cuelume = null;
+
+  function playCue(name) {
+    if (!soundEnabled || !cuelume || typeof cuelume.play !== 'function') return;
+    try { cuelume.play(name); } catch (_) {}
+  }
+
+  import('https://esm.sh/cuelume@0.1.2').then((module) => {
+    cuelume = module;
+    if (typeof cuelume.bind === 'function') cuelume.bind();
+    if (typeof cuelume.setEnabled === 'function') cuelume.setEnabled(soundEnabled);
+  }).catch(() => { /* offline: UI stays fully usable */ });
+
+  /* ==============================================================
+     Library data
+     ============================================================== */
+
+  const OPENINGS = [
+    [
+      "The archive closed at dusk, but the reading-room lamps stayed lit long after the last scholar had gone. Eira counted the shelves twice before she allowed herself to believe the door had been left unlocked.",
+      "On the lectern a single folio lay open to a page that had not been there that morning. The hand was hers. She had not written it."
+    ],
+    [
+      "The letter arrived on a Tuesday, addressed in her own handwriting and postmarked four years from now. Eira read it twice on the doorstep and once more at the kitchen table, and by then the tea had gone cold.",
+      "It told her three things. Only the first of them was survivable."
+    ],
+    [
+      "Rain had been falling on the library roof for three days, and on the third day the ceiling began to remember. Eira watched a page of vellum peel itself free of its binding and drift down like something released.",
+      "It landed face up. The words were not Latin, not any language she knew, and yet she read them perfectly."
+    ],
+    [
+      "The clock in the west corridor had been stopped for sixty years. Eira heard it tick once at midnight, and again a quarter past — fifteen minutes late, as though time had only just remembered its manners.",
+      "By morning the corridor had grown longer. She counted the doors twice and got two different answers."
+    ]
+  ];
+
+  function makeStory(id, title, description, daysAgo, paragraphs) {
+    return {
+      id,
+      title,
+      description,
+      createdAt: Date.now() - daysAgo * 86400000,
+      cover: null,
+      memory: '',
+      lorebook: [],
+      gallery: [],
+      timelines: [
+        { id: 'main', name: 'Main Timeline', meta: 'Shared memory · origin', paragraphs }
+      ],
+      activeTimelineId: 'main'
+    };
+  }
+
+  function seedLibrary() {
+    return {
+      stories: [
+        makeStory(
+          's-furthest',
+          'Furthest',
+          'Reborn in an anthropomorphized magical ancient Rome, a young fox with a stranger\'s memories navigates bathhouse politics and forbidden augury.',
+          42,
+          [
+            "The bathhouse steam carried the reek of wet fur and political ambition, a combination Cassius Vulpinius had learned to parse with his fox's nose. The sharp musk of wolf-senators reeking of territorial certainty, the cloying sweetness of civet-oil perfumes masking rodent anxiety, and beneath it all, the limestone-tang of enchanted water flowing through pipes that shouldn't exist for another thousand years if this world obeyed the history he remembered.",
+            "He filed his claws shorter against the marble bench, shorter than fashion, shorter than dignitas, listening to the scrape of keratin against stone that no true Roman fox would tolerate."
+          ]
+        ),
+        makeStory(
+          's-folio',
+          'The Locked Folio',
+          'An archivist finds a page written in her own hand that she has not yet written. The library begins to remember back.',
+          11,
+          OPENINGS[0]
+        ),
+        makeStory(
+          's-letter',
+          'Four Years From Now',
+          'A letter arrives postmarked four years in the future, addressed in the recipient\'s own handwriting, listing three things. Only one is survivable.',
+          3,
+          OPENINGS[1]
+        )
+      ]
+    };
+  }
+
+  let library = null;
+
+  // Older saves predate the memory / lorebook / gallery fields.
+  function normalizeStory(story) {
+    if (typeof story.memory !== 'string') story.memory = '';
+    if (!Array.isArray(story.lorebook)) story.lorebook = [];
+    if (!Array.isArray(story.gallery)) story.gallery = [];
+    story.lorebook = story.lorebook.filter((e) => e && typeof e.entry === 'string' && typeof e.keys === 'string');
+    story.gallery = story.gallery.filter((g) => g && typeof g.src === 'string');
+  }
+
+  function loadLibrary() {
+    try {
+      const raw = getPref(LIB_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && Array.isArray(parsed.stories)) {
+          library = parsed;
+          library.stories.forEach(normalizeStory);
+          return;
+        }
+      }
+    } catch (_) { /* fall through to seed */ }
+    library = seedLibrary();
+    persistLibrary();
+  }
+
+  function persistLibrary() {
+    if (!setPref(LIB_KEY, JSON.stringify(library))) {
+      showToast('Could not save — browser storage is full.');
+    }
+  }
+
+  loadLibrary();
+
+  let activeStoryId = null;
+  let proseEditing = false;
+  let armedDeleteId = null;
+  let armedTimer = null;
+  let armedTimelineId = null;
+  let armedTimelineTimer = null;
+
+  function activeStory() {
+    return library.stories.find((s) => s.id === activeStoryId) || null;
+  }
+
+  /* ==============================================================
+     Library rendering
+     ============================================================== */
+
+  const ICON_IMAGE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="8.5" cy="10" r="1.4"/><path d="m21 16-5-5-4 4-3-3-6 6"/></svg>';
+  const ICON_DOWNLOAD = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M12 4v11M8 11l4 4 4-4M4 19h16"/></svg>';
+  const ICON_TRASH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M4 7h16M10 7V5h4v2M6 7l1 12h10l1-12"/></svg>';
+  const ICON_X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M18 6 6 18M6 6l12 12"/></svg>';
+
+  function formatDate(ts) {
+    try {
+      return new Date(ts).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+    } catch (_) { return ''; }
+  }
+
+  function iconButton(label, icon, onClick) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'icon-btn';
+    btn.setAttribute('aria-label', label);
+    btn.title = label;
+    btn.innerHTML = icon;
+    btn.addEventListener('click', (event) => {
+      event.stopPropagation();
+      onClick(btn);
+    });
+    return btn;
+  }
+
+  function buildStoryCard(story) {
+    const card = document.createElement('article');
+    card.className = 'story-card';
+    card.tabIndex = 0;
+    card.setAttribute('role', 'button');
+    card.setAttribute('aria-label', 'Open story: ' + story.title);
+
+    card.addEventListener('click', (event) => {
+      if (event.target.closest('.story-actions, input[type="file"]')) return;
+      openStory(story.id);
+    });
+    card.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        openStory(story.id);
+      }
+    });
+
+    // Cover
+    const cover = document.createElement('div');
+    cover.className = 'story-cover';
+
+    if (story.cover) {
+      const img = document.createElement('img');
+      img.src = story.cover;
+      img.alt = '';
+      cover.appendChild(img);
+    } else {
+      const letter = document.createElement('span');
+      letter.className = 'story-cover-letter';
+      letter.textContent = (story.title || '?').trim().charAt(0).toUpperCase() || '?';
+      cover.appendChild(letter);
+    }
+
+    // Actions
+    const actions = document.createElement('div');
+    actions.className = 'story-actions';
+
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = 'image/*';
+    fileInput.hidden = true;
+    // The hidden input lives inside the card. Its programmatic click() bubbles
+    // a synthetic click that would otherwise open the story — stop it so the
+    // image button only ever opens the file picker (images only).
+    fileInput.addEventListener('click', (event) => event.stopPropagation());
+    fileInput.addEventListener('change', () => {
+      const file = fileInput.files && fileInput.files[0];
+      if (file) handleCoverFile(story.id, file);
+      fileInput.value = '';
+    });
+
+    const coverBtn = iconButton('Set cover image', ICON_IMAGE, () => fileInput.click());
+    const dlBtn = iconButton('Download story as JSON', ICON_DOWNLOAD, () => downloadStory(story.id));
+    const delBtn = iconButton('Delete story', ICON_TRASH, (btn) => armDelete(story.id, btn));
+
+    actions.append(coverBtn, dlBtn, delBtn);
+    cover.append(actions, fileInput);
+
+    // Body
+    const body = document.createElement('div');
+    body.className = 'story-body';
+
+    const title = document.createElement('div');
+    title.className = 'story-title';
+    title.textContent = story.title;
+
+    const desc = document.createElement('p');
+    desc.className = 'story-desc';
+    desc.textContent = story.description;
+
+    const date = document.createElement('div');
+    date.className = 'story-date';
+    date.textContent = formatDate(story.createdAt);
+
+    body.append(title, desc, date);
+    card.append(cover, body);
+
+    return card;
+  }
+
+  function buildAddCard() {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'add-card';
+    btn.setAttribute('aria-label', 'Create a new story');
+    btn.setAttribute('data-cuelume-press', '');
+    btn.setAttribute('data-cuelume-release', '');
+
+    const plus = document.createElement('span');
+    plus.className = 'add-plus';
+    plus.setAttribute('aria-hidden', 'true');
+    plus.textContent = '+';
+
+    const label = document.createElement('span');
+    label.className = 'add-label';
+    label.textContent = 'New story';
+
+    btn.append(plus, label);
+    btn.addEventListener('click', createStory);
+    return btn;
+  }
+
+  function renderStories() {
+    const grid = document.getElementById('storyGrid');
+    const frag = document.createDocumentFragment();
+
+    library.stories.forEach((story) => frag.appendChild(buildStoryCard(story)));
+    frag.appendChild(buildAddCard());
+    grid.replaceChildren(frag);
+
+    const count = library.stories.length;
+    document.getElementById('storyCount').textContent =
+      count === 1 ? '1 story' : count + ' stories';
+  }
+
+  /* ==============================================================
+     Characters (placeholder)
+     ============================================================== */
+
+  const PLACEHOLDER_CHARACTERS = [
+    { name: 'Eira', role: 'Archivist' },
+    { name: 'Cassius Vulpinius', role: 'POV · Main cast' },
+    { name: 'Magistra Brunna', role: 'Augur' },
+    { name: 'The Librarian', role: 'System' },
+    { name: 'Tobias Wren', role: 'Side character' },
+    { name: 'Maren of the Lower Stacks', role: 'Side character' },
+    { name: 'The Cartographer', role: 'Unassigned' },
+    { name: 'Vex', role: 'Antagonist' }
+  ];
+
+  function renderCharacters() {
+    const grid = document.getElementById('characterGrid');
+    const frag = document.createDocumentFragment();
+
+    PLACEHOLDER_CHARACTERS.forEach((character) => {
+      const card = document.createElement('article');
+      card.className = 'char-card';
+      card.tabIndex = 0;
+      card.setAttribute('role', 'button');
+      card.setAttribute('aria-label', character.name + ' — character sheet coming soon');
+
+      const portrait = document.createElement('div');
+      portrait.className = 'char-portrait';
+      portrait.setAttribute('aria-hidden', 'true');
+      portrait.textContent = character.name.trim().charAt(0).toUpperCase();
+
+      const name = document.createElement('div');
+      name.className = 'char-name';
+      name.textContent = character.name;
+
+      const role = document.createElement('div');
+      role.className = 'char-role';
+      role.textContent = character.role;
+
+      card.append(portrait, name, role);
+      card.addEventListener('click', () => {
+        playCue('tick');
+        showToast('Character sheets are coming in the next pass.');
+      });
+      card.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          card.click();
+        }
+      });
+
+      frag.appendChild(card);
+    });
+
+    // Dotted add tile, matching the stories grid.
+    const add = document.createElement('button');
+    add.type = 'button';
+    add.className = 'add-card';
+    add.setAttribute('aria-label', 'Create a new character');
+    add.innerHTML = '<span class="add-plus" aria-hidden="true">+</span><span class="add-label">New character</span>';
+    add.addEventListener('click', () => {
+      playCue('tick');
+      showToast('Character creation is coming in the next pass.');
+    });
+    frag.appendChild(add);
+
+    grid.replaceChildren(frag);
+  }
+
+  /* ==============================================================
+     Library tabs
+     ============================================================== */
+
+  const libraryTabs = Array.from(document.querySelectorAll('[data-library-tab]'));
+  const storiesPanel = document.getElementById('storiesPanel');
+  const charactersPanel = document.getElementById('charactersPanel');
+
+  function setLibraryTab(tabName) {
+    libraryTabs.forEach((tab) => {
+      tab.setAttribute('aria-selected', String(tab.dataset.libraryTab === tabName));
+    });
+    storiesPanel.hidden = tabName !== 'stories';
+    charactersPanel.hidden = tabName !== 'characters';
+  }
+
+  libraryTabs.forEach((tab) => {
+    tab.addEventListener('click', () => {
+      setLibraryTab(tab.dataset.libraryTab);
+      document.getElementById('libraryView').scrollTop = 0;
+    });
+  });
+
+  document.querySelector('.tabs-bar[role="tablist"]').addEventListener('keydown', (event) => {
+    if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+    const current = libraryTabs.findIndex((t) => t.getAttribute('aria-selected') === 'true');
+    const next = event.key === 'ArrowRight'
+      ? (current + 1) % libraryTabs.length
+      : (current - 1 + libraryTabs.length) % libraryTabs.length;
+    libraryTabs[next].focus();
+    setLibraryTab(libraryTabs[next].dataset.libraryTab);
+    event.preventDefault();
+  });
+
+  /* ==============================================================
+     Story lifecycle
+     ============================================================== */
+
+  function createStory() {
+    const id = 's-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    const story = {
+      id,
+      title: 'Untitled Story',
+      description: 'A new story, waiting for its first fragment.',
+      createdAt: Date.now(),
+      cover: null,
+      memory: '',
+      lorebook: [],
+      gallery: [],
+      timelines: [
+        { id: 'main', name: 'Main Timeline', meta: 'Shared memory · origin', paragraphs: OPENINGS[2] }
+      ],
+      activeTimelineId: 'main'
+    };
+
+    library.stories.unshift(story);
+    persistLibrary();
+    renderStories();
+    playCue('bloom');
+    openStory(id);
+    showToast('New story created.');
+  }
+
+  function clearArmedDelete() {
+    if (armedTimer) { clearTimeout(armedTimer); armedTimer = null; }
+    if (armedDeleteId) {
+      const btn = document.querySelector('.icon-btn.armed');
+      if (btn) { btn.classList.remove('armed'); btn.title = 'Delete story'; btn.setAttribute('aria-label', 'Delete story'); }
+      armedDeleteId = null;
+    }
+  }
+
+  function armDelete(id, btn) {
+    if (armedDeleteId === id) {
+      clearArmedDelete();
+      deleteStory(id);
+      return;
+    }
+    clearArmedDelete();
+    armedDeleteId = id;
+    btn.classList.add('armed');
+    btn.title = 'Click again to delete';
+    btn.setAttribute('aria-label', 'Click again to delete story');
+    playCue('tick');
+    showToast('Click the bin again to delete this story.');
+    armedTimer = setTimeout(clearArmedDelete, 4000);
+  }
+
+  function deleteStory(id) {
+    const index = library.stories.findIndex((s) => s.id === id);
+    if (index === -1) return;
+    library.stories.splice(index, 1);
+    persistLibrary();
+    renderStories();
+    playCue('droplet');
+    showToast('Story deleted.');
+  }
+
+  function slugify(text) {
+    return (text || 'story')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 60) || 'story';
+  }
+
+  function downloadStory(id) {
+    const story = library.stories.find((s) => s.id === id);
+    if (!story) return;
+
+    const payload = {
+      app: 'Errata Local',
+      format: 'errata-story',
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      story
+    };
+
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = slugify(story.title) + '.json';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+
+    playCue('success');
+    showToast('Story downloaded as JSON.');
+  }
+
+  /* ---- Import: full story JSON (timelines, lorebook, memory, cover) */
+
+  function importStoryFromJSON(file) {
+    const reader = new FileReader();
+    reader.onload = () => {
+      let raw = null;
+      try {
+        const parsed = JSON.parse(reader.result);
+        // Accept both a wrapped export ({ story: {...} }) and a bare story.
+        if (parsed && typeof parsed === 'object' && parsed.story && typeof parsed.story === 'object') raw = parsed.story;
+        else if (parsed && typeof parsed === 'object') raw = parsed;
+      } catch (_) { raw = null; }
+
+      if (!raw || !Array.isArray(raw.timelines) || !raw.timelines.length) {
+        playCue('error');
+        showToast('That file is not an Errata story export.');
+        return;
+      }
+
+      const stamp = Date.now().toString(36);
+      const timelines = raw.timelines
+        .map((t, i) => ({
+          id: (typeof t.id === 'string' && t.id ? t.id : 'tl-' + i) + '-' + stamp,
+          name: typeof t.name === 'string' && t.name.trim() ? t.name : (i === 0 ? 'Main Timeline' : 'Timeline ' + (i + 1)),
+          meta: typeof t.meta === 'string' && t.meta ? t.meta : 'Imported',
+          paragraphs: Array.isArray(t.paragraphs)
+            ? t.paragraphs.filter((p) => typeof p === 'string' && p.trim())
+            : []
+        }))
+        .filter((t) => t.paragraphs.length);
+
+      if (!timelines.length) {
+        playCue('error');
+        showToast('The export has no readable prose in any timeline.');
+        return;
+      }
+
+      const story = {
+        id: 's-' + stamp + Math.random().toString(36).slice(2, 6),
+        title: typeof raw.title === 'string' && raw.title.trim() ? raw.title.trim() : 'Imported Story',
+        description: typeof raw.description === 'string' ? raw.description : '',
+        createdAt: typeof raw.createdAt === 'number' ? raw.createdAt : Date.now(),
+        cover: typeof raw.cover === 'string' && raw.cover.startsWith('data:image') ? raw.cover : null,
+        memory: typeof raw.memory === 'string' ? raw.memory : '',
+        lorebook: Array.isArray(raw.lorebook) ? raw.lorebook : [],
+        gallery: Array.isArray(raw.gallery) ? raw.gallery : [],
+        timelines,
+        activeTimelineId: timelines[0].id
+      };
+      normalizeStory(story);
+
+      library.stories.unshift(story);
+      persistLibrary();
+      renderStories();
+      playCue('success');
+      showToast('Imported "' + story.title + '".');
+    };
+    reader.onerror = () => {
+      playCue('error');
+      showToast('That file could not be read.');
+    };
+    reader.readAsText(file);
+  }
+
+  const importFileInput = document.createElement('input');
+  importFileInput.type = 'file';
+  importFileInput.accept = 'application/json,.json';
+  importFileInput.hidden = true;
+  // Same guard as the other hidden inputs: the synthetic click must not
+  // bubble into neighbouring listeners.
+  importFileInput.addEventListener('click', (event) => event.stopPropagation());
+  importFileInput.addEventListener('change', () => {
+    const file = importFileInput.files && importFileInput.files[0];
+    if (file) importStoryFromJSON(file);
+    importFileInput.value = '';
+  });
+  document.body.appendChild(importFileInput);
+  document.getElementById('importBtn').addEventListener('click', () => importFileInput.click());
+
+  function handleCoverFile(id, file, onUpdated) {
+    if (!file.type || !file.type.startsWith('image/')) {
+      showToast('Choose an image file.');
+      playCue('error');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const img = new Image();
+      img.onload = () => {
+        // Downscale so the data URL stays small in localStorage.
+        const MAX_W = 640;
+        const MAX_H = 427;
+        const scale = Math.min(1, MAX_W / img.width, MAX_H / img.height);
+        const w = Math.max(1, Math.round(img.width * scale));
+        const h = Math.max(1, Math.round(img.height * scale));
+
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, w, h);
+
+        const story = library.stories.find((s) => s.id === id);
+        if (!story) return;
+
+        story.cover = canvas.toDataURL('image/jpeg', 0.78);
+        persistLibrary();
+        renderStories();
+        if (typeof onUpdated === 'function') onUpdated();
+        playCue('success');
+        showToast('Cover updated.');
+      };
+      img.onerror = () => {
+        showToast('That image could not be read.');
+        playCue('error');
+      };
+      img.src = reader.result;
+    };
+    reader.onerror = () => {
+      showToast('That file could not be read.');
+      playCue('error');
+    };
+    reader.readAsDataURL(file);
+  }
+
+  /* ==============================================================
+     Reader — timeline + prose
+     ============================================================== */
+
+  const libraryView = document.getElementById('libraryView');
+  const readerView = document.getElementById('readerView');
+  const topbarLibrary = document.getElementById('topbarLibrary');
+  const topbarReader = document.getElementById('topbarReader');
+  const readerTitle = document.getElementById('readerTitle');
+  const readerPageTitle = document.getElementById('readerPageTitle');
+  const timelineScroller = document.getElementById('timelineScroller');
+  const proseContent = document.getElementById('proseContent');
+  const proseStage = document.getElementById('proseStage');
+
+  function openStory(id) {
+    const story = library.stories.find((s) => s.id === id);
+    if (!story) return;
+
+    activeStoryId = id;
+    libraryView.hidden = true;
+    readerView.hidden = false;
+    topbarLibrary.hidden = true;
+    topbarReader.hidden = false;
+    setBackdrop('reader');
+
+    readerTitle.textContent = story.title;
+    readerPageTitle.textContent = story.title;
+
+    closeSettings();
+    closeSidePanel();
+    hideEditChip();
+    clearArmedTimeline();
+    renderTimelines();
+    renderProse();
+
+    playCue('bloom');
+    document.getElementById('backButton').focus({ preventScroll: true });
+  }
+
+  function closeStory() {
+    activeStoryId = null;
+    readerView.hidden = true;
+    libraryView.hidden = false;
+    topbarReader.hidden = true;
+    topbarLibrary.hidden = false;
+    setBackdrop('library');
+
+    document.getElementById('composerStatus').hidden = true;
+    closePopover();
+    closeSettings();
+    closeSidePanel();
+    hideEditChip();
+    clearArmedTimeline();
+    clearArmedLore();
+    clearArmedGallery();
+    closeStoryDetails(false);
+    renderStories();
+    playCue('droplet');
+    document.getElementById('brandHome').focus({ preventScroll: true });
+  }
+
+  function currentTimeline(story) {
+    return story.timelines.find((t) => t.id === story.activeTimelineId) || story.timelines[0];
+  }
+
+  function renderTimelines() {
+    const story = activeStory();
+    if (!story) return;
+
+    const frag = document.createDocumentFragment();
+
+    story.timelines.forEach((timeline) => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'timeline-chip';
+      chip.dataset.id = timeline.id;
+      chip.setAttribute('aria-pressed', String(timeline.id === story.activeTimelineId));
+      chip.setAttribute('data-cuelume-toggle', '');
+
+      const name = document.createElement('span');
+      name.className = 'tl-name';
+      name.textContent = timeline.name;
+
+      const meta = document.createElement('span');
+      meta.className = 'tl-meta';
+      meta.textContent = timeline.meta;
+
+      chip.append(name, meta);
+
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'tl-delete';
+      del.innerHTML = ICON_X;
+      del.dataset.label = 'Delete timeline: ' + timeline.name;
+      del.setAttribute('aria-label', del.dataset.label);
+      del.setAttribute('data-cuelume-press', '');
+      del.setAttribute('data-cuelume-release', '');
+      del.addEventListener('click', (event) => {
+        event.stopPropagation();
+        armTimelineDelete(timeline.id, timeline.name, del);
+      });
+      chip.append(del);
+
+      chip.addEventListener('click', () => selectTimeline(timeline.id));
+      frag.appendChild(chip);
+    });
+
+    timelineScroller.replaceChildren(frag);
+  }
+
+  // Spoken lines — text wrapped in double quotes — get a span so the CSS
+  // can cool them toward soft blue. Built from text nodes, never innerHTML.
+  const DIALOGUE_RE = /("[^"\n]*"|“[^”\n]*”)/g;
+
+  function appendDialogueAware(p, text) {
+    let last = 0;
+    let match;
+    DIALOGUE_RE.lastIndex = 0;
+    while ((match = DIALOGUE_RE.exec(text))) {
+      if (match.index > last) p.appendChild(document.createTextNode(text.slice(last, match.index)));
+      const span = document.createElement('span');
+      span.className = 'dialogue';
+      span.textContent = match[0];
+      p.appendChild(span);
+      last = match.index + match[0].length;
+    }
+    if (last < text.length) p.appendChild(document.createTextNode(text.slice(last)));
+    if (!p.childNodes.length) p.textContent = text;
+  }
+
+  function renderProse() {
+    const story = activeStory();
+    if (!story) return;
+
+    // Any running generation is abandoned — the manuscript just changed.
+    abortGeneration();
+
+    // Any open editor is discarded — switching timelines or stories is a cancel.
+    proseEditing = false;
+
+    const timeline = currentTimeline(story);
+    const frag = document.createDocumentFragment();
+
+    timeline.paragraphs.forEach((text) => {
+      const p = document.createElement('p');
+      appendDialogueAware(p, text);
+      frag.appendChild(p);
+    });
+
+    proseContent.replaceChildren(frag);
+
+    proseContent.classList.remove('prose-anim');
+    void proseContent.offsetWidth;
+    proseContent.classList.add('prose-anim');
+
+    proseStage.scrollTop = 0;
+  }
+
+  /* ==============================================================
+     Prose stage — click shows an Edit chip, double-click edits.
+     Editing happens inline in the prose itself: no new surfaces, the
+     caret just drops into the text. Changes save when the prose loses
+     focus or Escape is pressed.
+     ============================================================== */
+
+  const editChip = document.createElement('button');
+  editChip.type = 'button';
+  editChip.className = 'edit-chip';
+  editChip.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>Edit';
+  editChip.hidden = true;
+  document.body.appendChild(editChip);
+
+  function hideEditChip() { editChip.hidden = true; }
+
+  function showEditChip(x, y) {
+    if (proseEditing || generation) return;
+    editChip.style.left = Math.round(Math.min(x, window.innerWidth - 90)) + 'px';
+    editChip.style.top = Math.round(Math.max(8, y - 42)) + 'px';
+    editChip.hidden = false;
+    playCue('tick');
+  }
+
+  editChip.addEventListener('click', (event) => {
+    event.stopPropagation();
+    hideEditChip();
+    enterProseEdit();
+  });
+
+  function placeCaretAtEnd() {
+    const sel = window.getSelection();
+    if (!sel) return;
+    const range = document.createRange();
+    range.selectNodeContents(proseContent);
+    range.collapse(false);
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+
+  function enterProseEdit(event) {
+    const story = activeStory();
+    if (!story || proseEditing || generation) return;
+    proseEditing = true;
+    hideEditChip();
+
+    proseContent.contentEditable = 'true';
+    proseContent.classList.remove('prose-anim');
+    proseContent.setAttribute('aria-label', 'Manuscript editor — editing inline');
+
+    playCue('fold');
+    proseContent.focus({ preventScroll: true });
+
+    // Drop the caret exactly where the story was double-clicked, or at
+    // the end of the manuscript when entered through the Edit chip.
+    let placed = false;
+    if (event && typeof event.clientX === 'number' && document.caretRangeFromPoint) {
+      const range = document.caretRangeFromPoint(event.clientX, event.clientY);
+      if (range && proseContent.contains(range.startContainer)) {
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+        placed = true;
+      }
+    }
+    if (!placed) placeCaretAtEnd();
+  }
+
+  function readEditedParagraphs() {
+    const blocks = [];
+    proseContent.childNodes.forEach((node) => {
+      if (node.nodeType === Node.TEXT_NODE) {
+        const text = node.nodeValue.replace(/\s+/g, ' ').trim();
+        if (text) blocks.push(text);
+        return;
+      }
+      if (node.nodeType !== Node.ELEMENT_NODE) return;
+      if (/^(BR|HR)$/.test(node.tagName)) return;
+      const text = node.textContent.replace(/\s+/g, ' ').trim();
+      if (text) blocks.push(text);
+    });
+    return blocks;
+  }
+
+  function exitProseEdit() {
+    if (!proseEditing) return;
+    proseEditing = false;
+    proseContent.contentEditable = 'false';
+    proseContent.removeAttribute('aria-label');
+
+    const story = activeStory();
+    const timeline = story && currentTimeline(story);
+    if (!timeline) { renderProse(); return; }
+
+    const blocks = readEditedParagraphs();
+    const changed = blocks.length !== timeline.paragraphs.length
+      || blocks.some((b, i) => b !== timeline.paragraphs[i]);
+
+    if (changed) {
+      timeline.paragraphs = blocks;
+      persistLibrary();
+      renderProse();
+      playCue('success');
+      showToast('Manuscript updated.');
+      refreshSidePanel();
+    } else {
+      renderProse();
+    }
+  }
+
+  proseContent.addEventListener('focusout', () => {
+    // Leaving the prose saves the manuscript — no buttons needed.
+    if (proseEditing) setTimeout(exitProseEdit, 0);
+  });
+
+  proseContent.addEventListener('click', (event) => {
+    if (proseEditing) return;
+    // Selecting text is not a request to edit.
+    if (window.getSelection && String(window.getSelection())) return;
+    showEditChip(event.clientX, event.clientY);
+  });
+
+  proseContent.addEventListener('dblclick', (event) => {
+    event.preventDefault();
+    hideEditChip();
+    enterProseEdit(event);
+  });
+
+  proseStage.addEventListener('scroll', hideEditChip, { passive: true });
+
+  document.addEventListener('click', (event) => {
+    if (editChip.hidden) return;
+    if (editChip.contains(event.target) || proseContent.contains(event.target)) return;
+    hideEditChip();
+  });
+
+  function selectTimeline(id) {
+    const story = activeStory();
+    if (!story || story.activeTimelineId === id) return;
+    story.activeTimelineId = id;
+    persistLibrary();
+    renderTimelines();
+    renderProse();
+    refreshSidePanel();
+    playCue('toggle');
+  }
+
+  function forkTimeline() {
+    const story = activeStory();
+    if (!story) return;
+
+    const forkNumber = story.timelines.length;
+    const opening = OPENINGS[forkNumber % OPENINGS.length];
+
+    const timeline = {
+      id: 'fork-' + Date.now().toString(36),
+      name: 'Fork ' + forkNumber,
+      meta: 'Shared memory · new opening',
+      paragraphs: opening
+    };
+
+    story.timelines.push(timeline);
+    story.activeTimelineId = timeline.id;
+    persistLibrary();
+
+    renderTimelines();
+    renderProse();
+    refreshSidePanel();
+
+    requestAnimationFrame(() => {
+      const chip = timelineScroller.querySelector('[data-id="' + timeline.id + '"]');
+      if (chip) chip.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    });
+
+    playCue('bloom');
+    showToast('Forked from shared memory with a new opening.');
+  }
+
+  document.getElementById('forkButton').addEventListener('click', forkTimeline);
+  document.getElementById('backButton').addEventListener('click', closeStory);
+  document.getElementById('brandHome').addEventListener('click', (event) => {
+    event.preventDefault();
+    closeStory();
+  });
+
+  /* ==============================================================
+     Timeline deletion — armed × button, times out after 4 seconds
+     ============================================================== */
+
+  function clearArmedTimeline() {
+    if (armedTimelineTimer) { clearTimeout(armedTimelineTimer); armedTimelineTimer = null; }
+    if (armedTimelineId) {
+      const btn = document.querySelector('.tl-delete.armed');
+      if (btn) {
+        btn.classList.remove('armed');
+        btn.setAttribute('aria-label', btn.dataset.label || 'Delete timeline');
+      }
+      armedTimelineId = null;
+    }
+  }
+
+  function armTimelineDelete(id, name, btn) {
+    if (armedTimelineId === id) {
+      clearArmedTimeline();
+      deleteTimeline(id);
+      return;
+    }
+    clearArmedTimeline();
+    armedTimelineId = id;
+    btn.classList.add('armed');
+    btn.setAttribute('aria-label', 'Click again to delete ' + name);
+    playCue('tick');
+    showToast('Click the × again to delete "' + name + '".');
+    armedTimelineTimer = setTimeout(clearArmedTimeline, 4000);
+  }
+
+  function deleteTimeline(id) {
+    const story = activeStory();
+    if (!story) return;
+
+    if (story.timelines.length <= 1) {
+      playCue('error');
+      showToast('A story needs at least one timeline.');
+      return;
+    }
+
+    const index = story.timelines.findIndex((t) => t.id === id);
+    if (index === -1) return;
+
+    const name = story.timelines[index].name;
+    story.timelines.splice(index, 1);
+
+    if (story.activeTimelineId === id) {
+      story.activeTimelineId = story.timelines[0].id;
+    }
+
+    persistLibrary();
+    renderTimelines();
+    renderProse();
+    refreshSidePanel();
+    playCue('droplet');
+    showToast('Timeline "' + name + '" deleted.');
+  }
+
+  /* ==============================================================
+     Reader settings tab — side docked, placeholder panel
+     ============================================================== */
+
+  const settingsTab = document.getElementById('settingsTab');
+  const settingsPanel = document.getElementById('settingsPanel');
+
+  function openSettings() {
+    settingsPanel.hidden = false;
+    settingsTab.setAttribute('aria-expanded', 'true');
+    readerViewEl.classList.add('panel-left-open');
+    playCue('bloom');
+  }
+
+  function closeSettings() {
+    if (settingsPanel.hidden) return;
+    settingsPanel.hidden = true;
+    settingsTab.setAttribute('aria-expanded', 'false');
+    readerViewEl.classList.remove('panel-left-open');
+    clearSettingsPin();
+    playCue('droplet');
+  }
+
+  settingsTab.addEventListener('click', () => {
+    if (settingsPanel.hidden) openSettings();
+    else closeSettings();
+  });
+  document.getElementById('settingsClose').addEventListener('click', closeSettings);
+
+  const settingsPin = document.getElementById('settingsPin');
+  let settingsPinned = false;
+
+  settingsPin.addEventListener('click', () => {
+    settingsPinned = !settingsPinned;
+    settingsPin.classList.toggle('active', settingsPinned);
+    settingsPin.setAttribute('aria-pressed', String(settingsPinned));
+    playCue(settingsPinned ? 'bloom' : 'droplet');
+    showToast(settingsPinned ? 'Panel pinned — it stays open until you unpin it.' : 'Panel unpinned.');
+  });
+
+  function clearSettingsPin() {
+    settingsPinned = false;
+    settingsPin.classList.remove('active');
+    settingsPin.setAttribute('aria-pressed', 'false');
+  }
+
+  // Click outside the panel (and outside the tab) closes it — unless pinned.
+  document.addEventListener('click', (event) => {
+    if (settingsPanel.hidden) return;
+    if (settingsPinned) return;
+    if (settingsPanel.contains(event.target) || settingsTab.contains(event.target)) return;
+    closeSettings();
+  });
+
+  /* ==============================================================
+     Reader settings — banned words, prose width, text size
+     Global preferences: they persist across every story.
+     ============================================================== */
+
+  const readerViewEl = document.getElementById('readerView');
+  const SETTINGS_KEY = 'errata-reader-settings';
+  const PROSE_WIDTHS = { narrow: '38rem', medium: '44rem', comfortable: '50rem' };
+  const PROSE_SIZES = { xs: '.875rem', s: '.9625rem', m: '1.0625rem', l: '1.2rem' };
+
+  let readerSettings = { bannedWords: [], width: 'narrow', fontSize: 'm' };
+  try {
+    const rawSettings = getPref(SETTINGS_KEY);
+    if (rawSettings) readerSettings = { ...readerSettings, ...JSON.parse(rawSettings) };
+  } catch (_) { /* defaults */ }
+
+  function persistReaderSettings() {
+    setPref(SETTINGS_KEY, JSON.stringify(readerSettings));
+  }
+
+  function applyReaderSettings() {
+    readerViewEl.style.setProperty('--prose-width', PROSE_WIDTHS[readerSettings.width] || PROSE_WIDTHS.narrow);
+    readerViewEl.style.setProperty('--prose-size', PROSE_SIZES[readerSettings.fontSize] || PROSE_SIZES.m);
+    document.querySelectorAll('#widthSeg .seg-btn').forEach((btn) => {
+      btn.setAttribute('aria-pressed', String(btn.dataset.width === readerSettings.width));
+    });
+    document.querySelectorAll('#sizeSeg .seg-btn').forEach((btn) => {
+      btn.setAttribute('aria-pressed', String(btn.dataset.size === readerSettings.fontSize));
+    });
+  }
+
+  const bannedChips = document.getElementById('bannedChips');
+  const bannedInput = document.getElementById('bannedInput');
+
+  function renderBannedChips() {
+    bannedChips.replaceChildren();
+    readerSettings.bannedWords.forEach((word) => {
+      const chip = document.createElement('span');
+      chip.className = 'banned-chip';
+      chip.appendChild(document.createTextNode(word));
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.textContent = '×';
+      del.setAttribute('aria-label', 'Remove ' + word);
+      del.addEventListener('click', () => {
+        readerSettings.bannedWords = readerSettings.bannedWords.filter((w) => w !== word);
+        persistReaderSettings();
+        renderBannedChips();
+        playCue('tick');
+      });
+      chip.appendChild(del);
+      bannedChips.appendChild(chip);
+    });
+  }
+
+  function addBannedWords(raw) {
+    const words = raw.split(/[,,\n]/).map((w) => w.trim()).filter(Boolean);
+    let added = 0;
+    words.forEach((word) => {
+      const exists = readerSettings.bannedWords.some((w) => w.toLowerCase() === word.toLowerCase());
+      if (!exists) { readerSettings.bannedWords.push(word); added++; }
+    });
+    if (added) {
+      persistReaderSettings();
+      renderBannedChips();
+      playCue('tick');
+    }
+  }
+
+  bannedInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' || event.key === ',') {
+      event.preventDefault();
+      if (bannedInput.value.trim()) {
+        addBannedWords(bannedInput.value);
+        bannedInput.value = '';
+      }
+    } else if (event.key === 'Backspace' && !bannedInput.value && readerSettings.bannedWords.length) {
+      readerSettings.bannedWords.pop();
+      persistReaderSettings();
+      renderBannedChips();
+      playCue('tick');
+    }
+  });
+
+  bannedInput.addEventListener('blur', () => {
+    if (bannedInput.value.trim()) {
+      addBannedWords(bannedInput.value);
+      bannedInput.value = '';
+    }
+  });
+
+  document.querySelectorAll('#widthSeg .seg-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      readerSettings.width = btn.dataset.width;
+      persistReaderSettings();
+      applyReaderSettings();
+      playCue('toggle');
+    });
+  });
+
+  document.querySelectorAll('#sizeSeg .seg-btn').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      readerSettings.fontSize = btn.dataset.size;
+      persistReaderSettings();
+      applyReaderSettings();
+      playCue('toggle');
+    });
+  });
+
+  renderBannedChips();
+  applyReaderSettings();
+
+  /* ==============================================================
+     Story details — edit title / description, view cover image
+     ============================================================== */
+
+  const detailsBackdrop = document.getElementById('detailsBackdrop');
+  const detailsTitleInput = document.getElementById('detailsTitleInput');
+  const detailsDescInput = document.getElementById('detailsDescInput');
+  const detailsCover = document.getElementById('detailsCover');
+  const detailsCoverNote = document.getElementById('detailsCoverNote');
+
+  function renderDetailsCover(story) {
+    detailsCover.replaceChildren();
+    detailsCover.appendChild(detailsFileInput);
+    if (story.cover) {
+      const img = document.createElement('img');
+      img.src = story.cover;
+      img.alt = 'Current story cover';
+      detailsCover.appendChild(img);
+      detailsCoverNote.textContent = 'Cover shown above — drop a new image here (or click) to replace it.';
+    } else {
+      const letter = document.createElement('span');
+      letter.className = 'details-cover-letter';
+      letter.textContent = (story.title || '?').trim().charAt(0).toUpperCase() || '?';
+      detailsCover.appendChild(letter);
+      detailsCoverNote.textContent = 'No cover yet — drop an image here, or click to browse.';
+    }
+  }
+
+  function openStoryDetails() {
+    const story = activeStory();
+    if (!story) return;
+
+    detailsTitleInput.value = story.title;
+    detailsDescInput.value = story.description;
+    renderDetailsCover(story);
+
+    detailsBackdrop.classList.add('open');
+    playCue('bloom');
+    requestAnimationFrame(() => detailsTitleInput.focus({ preventScroll: true }));
+  }
+
+  function closeStoryDetails(save) {
+    if (!detailsBackdrop.classList.contains('open')) return;
+
+    let savedChanges = false;
+    if (save) {
+      const story = activeStory();
+      if (story) {
+        const nextTitle = detailsTitleInput.value.trim();
+        const nextDesc = detailsDescInput.value.trim();
+        const changed = nextTitle !== story.title || nextDesc !== story.description;
+
+        story.title = nextTitle || 'Untitled Story';
+        story.description = nextDesc;
+
+        if (changed) {
+          persistLibrary();
+          renderStories();
+          playCue('success');
+          showToast('Story details saved.');
+          savedChanges = true;
+        }
+      }
+
+      const current = activeStory();
+      if (current) {
+        readerTitle.textContent = current.title;
+        readerPageTitle.textContent = current.title;
+      }
+    }
+
+    detailsBackdrop.classList.remove('open');
+    if (!savedChanges) playCue('droplet');
+    readerPageTitle.focus({ preventScroll: true });
+  }
+
+  readerPageTitle.addEventListener('click', openStoryDetails);
+  document.getElementById('detailsSave').addEventListener('click', () => closeStoryDetails(true));
+  document.getElementById('detailsCancel').addEventListener('click', () => closeStoryDetails(false));
+  document.getElementById('detailsCloseBtn').addEventListener('click', () => closeStoryDetails(false));
+
+  detailsBackdrop.addEventListener('click', (event) => {
+    if (event.target === detailsBackdrop) closeStoryDetails(false);
+  });
+
+  /* ---- Cover: drop an image onto the box, or click to browse ------ */
+
+  const detailsFileInput = document.createElement('input');
+  detailsFileInput.type = 'file';
+  detailsFileInput.accept = 'image/*';
+  detailsFileInput.hidden = true;
+  // Same guard as the library card: the input's synthetic click must not
+  // re-trigger the cover box's own click listener.
+  detailsFileInput.addEventListener('click', (event) => event.stopPropagation());
+  detailsFileInput.addEventListener('change', () => {
+    const file = detailsFileInput.files && detailsFileInput.files[0];
+    const story = activeStory();
+    if (file && story) {
+      handleCoverFile(story.id, file, () => {
+        const updated = activeStory();
+        if (updated) renderDetailsCover(updated);
+      });
+    }
+    detailsFileInput.value = '';
+  });
+  detailsCover.appendChild(detailsFileInput);
+
+  detailsCover.addEventListener('click', () => detailsFileInput.click());
+
+  ['dragenter', 'dragover'].forEach((type) => {
+    detailsCover.addEventListener(type, (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      detailsCover.classList.add('drag-over');
+      detailsCoverNote.textContent = 'Release to set this image as the cover.';
+    });
+  });
+
+  detailsCover.addEventListener('dragleave', (event) => {
+    if (detailsCover.contains(event.relatedTarget)) return;
+    detailsCover.classList.remove('drag-over');
+    const story = activeStory();
+    if (story) renderDetailsCover(story);
+  });
+
+  detailsCover.addEventListener('drop', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    detailsCover.classList.remove('drag-over');
+
+    const story = activeStory();
+    if (!story) return;
+
+    const file = event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files[0];
+    if (!file) return;
+
+    handleCoverFile(story.id, file, () => {
+      const updated = activeStory();
+      if (updated) renderDetailsCover(updated);
+    });
+  });
+
+  // While the details box is open, stop the browser from navigating away if
+  // an image is dropped outside the cover box. Same guard while reading —
+  // the gallery accepts drops anywhere inside its own panel only.
+  window.addEventListener('dragover', (event) => {
+    if (detailsBackdrop.classList.contains('open') || !readerView.hidden) event.preventDefault();
+  });
+  window.addEventListener('drop', (event) => {
+    if (detailsBackdrop.classList.contains('open') || !readerView.hidden) event.preventDefault();
+  });
+
+  /* ==============================================================
+     Context menu — right rail with Memory / Lorebook / Gallery
+     ============================================================== */
+
+  const sideRail = document.getElementById('sideRail');
+  const railButtons = Array.from(sideRail.querySelectorAll('.rail-btn'));
+  const sidePanel = document.getElementById('sidePanel');
+  const sidePanelTitle = document.getElementById('sidePanelTitle');
+  const sidePanelDesc = document.getElementById('sidePanelDesc');
+  const sidePages = {
+    memory: document.getElementById('pageMemory'),
+    lorebook: document.getElementById('pageLorebook'),
+    gallery: document.getElementById('pageGallery')
+  };
+
+  const SIDE_META = {
+    memory: {
+      title: 'Memory',
+      desc: 'A persistent note the model always knows — world rules, promises, tone, open threads.'
+    },
+    lorebook: {
+      title: 'Lorebook',
+      desc: 'Key terms that inject their entry into memory the moment they appear in the story.'
+    },
+    gallery: {
+      title: 'Gallery',
+      desc: 'Reference images for this story. Drop as many as you like at once.'
+    }
+  };
+
+  let activeSideTab = null;
+  let sidePinned = false;
+
+  function openSideTab(name) {
+    if (!sidePages[name]) return;
+    if (activeSideTab === name) { closeSidePanel(); return; }
+
+    const switching = activeSideTab !== null;
+    activeSideTab = name;
+
+    railButtons.forEach((btn) => btn.setAttribute('aria-selected', String(btn.dataset.sideTab === name)));
+    Object.entries(sidePages).forEach(([key, page]) => { page.hidden = key !== name; });
+    sidePanelTitle.textContent = SIDE_META[name].title;
+    sidePanelDesc.textContent = SIDE_META[name].desc;
+    sidePanel.classList.toggle('wide', name === 'gallery');
+    sidePanel.hidden = false;
+    readerViewEl.classList.add('panel-right-open');
+    readerViewEl.classList.toggle('panel-right-wide', name === 'gallery');
+
+    if (name === 'memory') renderMemory();
+    if (name === 'lorebook') renderLorebook();
+    if (name === 'gallery') renderGallery();
+
+    playCue(switching ? 'toggle' : 'bloom');
+  }
+
+  function closeSidePanel() {
+    if (!sidePanel.hidden) {
+      sidePanel.hidden = true;
+      playCue('droplet');
+    }
+    readerViewEl.classList.remove('panel-right-open', 'panel-right-wide');
+    activeSideTab = null;
+    sidePinned = false;
+    sidePin.classList.remove('active');
+    sidePin.setAttribute('aria-pressed', 'false');
+    railButtons.forEach((btn) => btn.setAttribute('aria-selected', 'false'));
+  }
+
+  // Re-render whichever page is open, so lorebook match flags and the
+  // gallery follow the prose as it changes underneath.
+  function refreshSidePanel() {
+    if (sidePanel.hidden) return;
+    if (activeSideTab === 'memory') renderMemory();
+    if (activeSideTab === 'lorebook') renderLorebook();
+    if (activeSideTab === 'gallery') renderGallery();
+  }
+
+  railButtons.forEach((btn) => {
+    btn.addEventListener('click', () => openSideTab(btn.dataset.sideTab));
+  });
+  document.getElementById('sideClose').addEventListener('click', closeSidePanel);
+
+  const sidePin = document.getElementById('sidePin');
+  sidePin.addEventListener('click', () => {
+    sidePinned = !sidePinned;
+    sidePin.classList.toggle('active', sidePinned);
+    sidePin.setAttribute('aria-pressed', String(sidePinned));
+    playCue(sidePinned ? 'bloom' : 'droplet');
+    showToast(sidePinned ? 'Panel pinned — it stays open until you unpin it.' : 'Panel unpinned.');
+  });
+
+  // Click outside the panel (and outside the rail) closes it — unless pinned.
+  document.addEventListener('click', (event) => {
+    if (sidePanel.hidden) return;
+    if (sidePinned) return;
+    if (sidePanel.contains(event.target) || sideRail.contains(event.target)) return;
+    closeSidePanel();
+  });
+
+  /* ---- Memory: a persistent note the model always knows ---------- */
+
+  const memoryInput = document.getElementById('memoryInput');
+  const memoryCount = document.getElementById('memoryCount');
+  let memoryTimer = null;
+
+  function renderMemory() {
+    const story = activeStory();
+    if (!story) return;
+    memoryInput.value = story.memory || '';
+    renderMemoryCount();
+  }
+
+  function renderMemoryCount() {
+    const len = memoryInput.value.length;
+    memoryCount.textContent = len === 1 ? '1 character' : len + ' characters';
+  }
+
+  memoryInput.addEventListener('input', () => {
+    renderMemoryCount();
+    clearTimeout(memoryTimer);
+    memoryTimer = setTimeout(() => {
+      const story = activeStory();
+      if (!story) return;
+      story.memory = memoryInput.value;
+      persistLibrary();
+    }, 500);
+  });
+
+  /* ---- Lorebook: key terms inject entries into memory ------------ */
+
+  const loreKeys = document.getElementById('loreKeys');
+  const loreEntry = document.getElementById('loreEntry');
+  const loreList = document.getElementById('loreList');
+  let armedLoreId = null;
+  let armedLoreTimer = null;
+
+  function clearArmedLore() {
+    if (armedLoreTimer) { clearTimeout(armedLoreTimer); armedLoreTimer = null; }
+    if (armedLoreId) {
+      const btn = loreList.querySelector('.lore-del.armed');
+      if (btn) btn.classList.remove('armed');
+      armedLoreId = null;
+    }
+  }
+
+  function loreKeysOf(entry) {
+    return entry.keys.split(',').map((k) => k.trim()).filter(Boolean);
+  }
+
+  function loreEntryActive(entry, prose) {
+    return loreKeysOf(entry).some((k) => prose.includes(k.toLowerCase()));
+  }
+
+  function renderLorebook() {
+    const story = activeStory();
+    if (!story) return;
+
+    const prose = currentTimeline(story).paragraphs.join(' ').toLowerCase();
+    const frag = document.createDocumentFragment();
+
+    if (!story.lorebook.length) {
+      const empty = document.createElement('div');
+      empty.className = 'lore-empty';
+      empty.textContent = 'No entries yet. Add a key term above — when the term is spoken in the story, its entry is injected into memory.';
+      frag.appendChild(empty);
+    }
+
+    story.lorebook.forEach((entry) => {
+      const row = document.createElement('article');
+      const active = loreEntryActive(entry, prose);
+      row.className = 'lore-entry' + (active ? ' active' : '');
+
+      const keys = document.createElement('div');
+      keys.className = 'lore-keys';
+      loreKeysOf(entry).forEach((k) => {
+        const chip = document.createElement('span');
+        chip.className = 'lore-key';
+        chip.textContent = k;
+        keys.appendChild(chip);
+      });
+
+      const text = document.createElement('div');
+      text.className = 'lore-text';
+      text.textContent = entry.entry;
+
+      row.append(keys, text);
+
+      if (active) {
+        const flag = document.createElement('div');
+        flag.className = 'lore-flag';
+        flag.innerHTML = '<i aria-hidden="true"></i>In the story now';
+        row.appendChild(flag);
+      }
+
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'lore-del';
+      del.innerHTML = ICON_X;
+      del.setAttribute('aria-label', 'Delete lorebook entry');
+      del.setAttribute('data-cuelume-press', '');
+      del.setAttribute('data-cuelume-release', '');
+      del.addEventListener('click', (event) => {
+        event.stopPropagation();
+        armLoreDelete(entry.id, del);
+      });
+      row.appendChild(del);
+
+      frag.appendChild(row);
+    });
+
+    loreList.replaceChildren(frag);
+  }
+
+  function armLoreDelete(id, btn) {
+    if (armedLoreId === id) {
+      clearArmedLore();
+      deleteLoreEntry(id);
+      return;
+    }
+    clearArmedLore();
+    armedLoreId = id;
+    btn.classList.add('armed');
+    playCue('tick');
+    showToast('Click the × again to delete this entry.');
+    armedLoreTimer = setTimeout(clearArmedLore, 4000);
+  }
+
+  function deleteLoreEntry(id) {
+    const story = activeStory();
+    if (!story) return;
+    const index = story.lorebook.findIndex((e) => e.id === id);
+    if (index === -1) return;
+    story.lorebook.splice(index, 1);
+    persistLibrary();
+    renderLorebook();
+    playCue('droplet');
+    showToast('Lorebook entry deleted.');
+  }
+
+  function addLoreEntry() {
+    const story = activeStory();
+    if (!story) return;
+    const keys = loreKeys.value.trim();
+    const entry = loreEntry.value.trim();
+    if (!keys || !entry) {
+      playCue('error');
+      showToast('Give the entry at least one key term and its text.');
+      return;
+    }
+    story.lorebook.push({
+      id: 'lb-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
+      keys,
+      entry
+    });
+    persistLibrary();
+    loreKeys.value = '';
+    loreEntry.value = '';
+    renderLorebook();
+    playCue('success');
+    showToast('Entry added to the lorebook.');
+  }
+
+  document.getElementById('loreAddBtn').addEventListener('click', addLoreEntry);
+  [loreKeys, loreEntry].forEach((el) => {
+    el.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+        event.preventDefault();
+        addLoreEntry();
+      }
+    });
+  });
+
+  /* ---- Gallery: bento grid, multi-file drop, fullscreen lightbox -- */
+
+  const galleryDrop = document.getElementById('galleryDrop');
+  const galleryGrid = document.getElementById('galleryGrid');
+  const galleryEmpty = document.getElementById('galleryEmpty');
+  const lightbox = document.getElementById('lightbox');
+  const lightboxImg = document.getElementById('lightboxImg');
+  let armedGalleryId = null;
+  let armedGalleryTimer = null;
+
+  function clearArmedGallery() {
+    if (armedGalleryTimer) { clearTimeout(armedGalleryTimer); armedGalleryTimer = null; }
+    if (armedGalleryId) {
+      const btn = galleryGrid.querySelector('.gallery-del.armed');
+      if (btn) btn.classList.remove('armed');
+      armedGalleryId = null;
+    }
+  }
+
+  function renderGallery() {
+    const story = activeStory();
+    if (!story) return;
+
+    const frag = document.createDocumentFragment();
+
+    story.gallery.forEach((image) => {
+      const tile = document.createElement('div');
+      tile.className = 'gallery-tile';
+      tile.setAttribute('role', 'button');
+      tile.tabIndex = 0;
+      tile.setAttribute('aria-label', 'View image fullscreen');
+
+      // Bento spans from the image's aspect ratio, so wide and tall
+      // images interlock instead of leaving holes.
+      const ratio = image.w / image.h;
+      if (ratio >= 1.35) tile.classList.add('span-2x');
+      if (ratio <= 0.72) tile.classList.add('span-2y');
+
+      const img = document.createElement('img');
+      img.src = image.src;
+      img.alt = '';
+      img.loading = 'lazy';
+      tile.appendChild(img);
+
+      const del = document.createElement('button');
+      del.type = 'button';
+      del.className = 'gallery-del';
+      del.innerHTML = ICON_X;
+      del.setAttribute('aria-label', 'Delete image');
+      del.setAttribute('data-cuelume-press', '');
+      del.setAttribute('data-cuelume-release', '');
+      del.addEventListener('click', (event) => {
+        event.stopPropagation();
+        armGalleryDelete(image.id, del);
+      });
+      tile.appendChild(del);
+
+      tile.addEventListener('click', (event) => {
+        event.stopPropagation();
+        if (event.target.closest('.gallery-del')) return;
+        openLightbox(image.src);
+      });
+      tile.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          openLightbox(image.src);
+        }
+      });
+
+      frag.appendChild(tile);
+    });
+
+    galleryGrid.replaceChildren(frag);
+    galleryEmpty.style.display = story.gallery.length ? 'none' : '';
+  }
+
+  function armGalleryDelete(id, btn) {
+    if (armedGalleryId === id) {
+      clearArmedGallery();
+      deleteGalleryImage(id);
+      return;
+    }
+    clearArmedGallery();
+    armedGalleryId = id;
+    btn.classList.add('armed');
+    playCue('tick');
+    showToast('Click the × again to delete this image.');
+    armedGalleryTimer = setTimeout(clearArmedGallery, 4000);
+  }
+
+  function deleteGalleryImage(id) {
+    const story = activeStory();
+    if (!story) return;
+    const index = story.gallery.findIndex((g) => g.id === id);
+    if (index === -1) return;
+    story.gallery.splice(index, 1);
+    persistLibrary();
+    renderGallery();
+    playCue('droplet');
+    showToast('Image removed from the gallery.');
+  }
+
+  /* Lightbox */
+
+  function openLightbox(src) {
+    lightboxImg.src = src;
+    lightbox.classList.add('open');
+    playCue('bloom');
+  }
+
+  function closeLightbox() {
+    if (!lightbox.classList.contains('open')) return;
+    lightbox.classList.remove('open');
+    playCue('droplet');
+  }
+
+  lightbox.addEventListener('click', (event) => {
+    if (event.target === lightboxImg) return;
+    closeLightbox();
+  });
+
+  document.getElementById('lightboxClose').addEventListener('click', (event) => {
+    event.stopPropagation();
+    closeLightbox();
+  });
+
+  /* Reading files — shared by the drop zone and the browse picker. */
+
+  function readImageFile(file) {
+    return new Promise((resolve, reject) => {
+      if (!file.type || !file.type.startsWith('image/')) { reject(new Error('not an image')); return; }
+      const reader = new FileReader();
+      reader.onload = () => {
+        const img = new Image();
+        img.onload = () => {
+          // Downscale so multi-image galleries still fit in localStorage.
+          const MAX = 1024;
+          const scale = Math.min(1, MAX / img.width, MAX / img.height);
+          const w = Math.max(1, Math.round(img.width * scale));
+          const h = Math.max(1, Math.round(img.height * scale));
+          const canvas = document.createElement('canvas');
+          canvas.width = w;
+          canvas.height = h;
+          canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+          resolve({ src: canvas.toDataURL('image/jpeg', 0.8), w, h });
+        };
+        img.onerror = () => reject(new Error('unreadable'));
+        img.src = reader.result;
+      };
+      reader.onerror = () => reject(new Error('unreadable'));
+      reader.readAsDataURL(file);
+    });
+  }
+
+  async function addGalleryFiles(files) {
+    const story = activeStory();
+    if (!story || !files || !files.length) return;
+
+    const images = files.filter((f) => f.type && f.type.startsWith('image/'));
+    if (!images.length) {
+      playCue('error');
+      showToast('Choose image files.');
+      return;
+    }
+
+    playCue('bloom');
+    let added = 0;
+    for (const file of images) {
+      try {
+        const data = await readImageFile(file);
+        story.gallery.push({
+          id: 'g-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5),
+          ...data
+        });
+        added++;
+      } catch (_) { /* skip unreadable files, keep going */ }
+    }
+
+    if (added) {
+      persistLibrary();
+      renderGallery();
+      playCue('success');
+      showToast(added === 1 ? '1 image added to the gallery.' : added + ' images added to the gallery.');
+    } else {
+      playCue('error');
+      showToast('Those images could not be read.');
+    }
+  }
+
+  const galleryFileInput = document.createElement('input');
+  galleryFileInput.type = 'file';
+  galleryFileInput.accept = 'image/*';
+  galleryFileInput.multiple = true;
+  galleryFileInput.hidden = true;
+  // Same guard as the cover box: the input's synthetic click must not
+  // re-trigger the drop zone's own click listener.
+  galleryFileInput.addEventListener('click', (event) => event.stopPropagation());
+  galleryFileInput.addEventListener('change', () => {
+    addGalleryFiles(Array.from(galleryFileInput.files || []));
+    galleryFileInput.value = '';
+  });
+  galleryDrop.appendChild(galleryFileInput);
+
+  galleryDrop.addEventListener('click', (event) => {
+    if (event.target.closest('.gallery-del')) return;
+    galleryFileInput.click();
+  });
+
+  ['dragenter', 'dragover'].forEach((type) => {
+    galleryDrop.addEventListener(type, (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      galleryDrop.classList.add('drag-over');
+    });
+  });
+
+  galleryDrop.addEventListener('dragleave', (event) => {
+    if (galleryDrop.contains(event.relatedTarget)) return;
+    galleryDrop.classList.remove('drag-over');
+  });
+
+  galleryDrop.addEventListener('drop', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    galleryDrop.classList.remove('drag-over');
+    const files = event.dataTransfer && event.dataTransfer.files;
+    if (files && files.length) addGalleryFiles(Array.from(files));
+  });
+
+  /* ==============================================================
+     Model settings
+     ============================================================== */
+
+  const MODEL_DEFAULTS = {
+    model: 'gpt-4o-mini',
+    apiUrl: 'https://api.openai.com/v1',
+    apiKey: '',
+    temperature: 0.8
+  };
+
+  let modelConfig = { ...MODEL_DEFAULTS };
+  try {
+    const raw = getPref(MODEL_KEY);
+    if (raw) modelConfig = { ...MODEL_DEFAULTS, ...JSON.parse(raw) };
+  } catch (_) { /* defaults */ }
+
+  const modelButton = document.getElementById('modelButton');
+  const modelPopover = document.getElementById('modelPopover');
+  const modelNameLabel = document.getElementById('modelNameLabel');
+  const modelTempLabel = document.getElementById('modelTempLabel');
+  const modelInput = document.getElementById('modelInput');
+  const apiUrlInput = document.getElementById('apiUrlInput');
+  const apiKeyInput = document.getElementById('apiKeyInput');
+  const tempRange = document.getElementById('tempRange');
+  const tempValue = document.getElementById('tempValue');
+  const modelSaved = document.getElementById('modelSaved');
+
+  let savedTimer = null;
+
+  function persistModel() {
+    setPref(MODEL_KEY, JSON.stringify(modelConfig));
+    modelSaved.classList.add('show');
+    clearTimeout(savedTimer);
+    savedTimer = setTimeout(() => modelSaved.classList.remove('show'), 1400);
+  }
+
+  function renderModelLabels() {
+    const name = (modelConfig.model || '').trim() || 'unset-model';
+    modelNameLabel.textContent = name;
+    modelTempLabel.textContent = Number(modelConfig.temperature).toFixed(2);
+  }
+
+  function fillModelForm() {
+    modelInput.value = modelConfig.model;
+    apiUrlInput.value = modelConfig.apiUrl;
+    apiKeyInput.value = modelConfig.apiKey || '';
+    tempRange.value = modelConfig.temperature;
+    tempValue.textContent = Number(modelConfig.temperature).toFixed(2);
+  }
+
+  renderModelLabels();
+  fillModelForm();
+
+  function openPopover() {
+    modelPopover.classList.add('open');
+    modelButton.setAttribute('aria-expanded', 'true');
+    fillModelForm();
+    playCue('bloom');
+  }
+
+  function closePopover() {
+    if (!modelPopover.classList.contains('open')) return;
+    modelPopover.classList.remove('open');
+    modelButton.setAttribute('aria-expanded', 'false');
+    playCue('droplet');
+  }
+
+  modelButton.addEventListener('click', () => {
+    if (modelPopover.classList.contains('open')) closePopover();
+    else openPopover();
+  });
+
+  document.getElementById('modelDone').addEventListener('click', closePopover);
+
+  document.addEventListener('click', (event) => {
+    if (modelPopover.contains(event.target) || modelButton.contains(event.target)) return;
+    closePopover();
+  });
+
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    if (detailsBackdrop.classList.contains('open')) {
+      closeStoryDetails(false);
+      return;
+    }
+    if (lightbox.classList.contains('open')) {
+      closeLightbox();
+      return;
+    }
+    if (generation) {
+      generation.controller.abort();
+      return;
+    }
+    if (proseEditing) {
+      exitProseEdit();
+      return;
+    }
+    if (!editChip.hidden) {
+      hideEditChip();
+      return;
+    }
+    clearArmedTimeline();
+    clearArmedLore();
+    clearArmedGallery();
+    if (sidePanel.hidden || !sidePinned) closeSidePanel();
+    if (settingsPanel.hidden || !settingsPinned) closeSettings();
+    closePopover();
+  });
+
+  modelInput.addEventListener('input', () => {
+    modelConfig.model = modelInput.value;
+    renderModelLabels();
+    persistModel();
+  });
+
+  apiUrlInput.addEventListener('input', () => {
+    modelConfig.apiUrl = apiUrlInput.value;
+    persistModel();
+  });
+
+  apiKeyInput.addEventListener('input', () => {
+    modelConfig.apiKey = apiKeyInput.value.trim();
+    persistModel();
+  });
+
+  tempRange.addEventListener('input', () => {
+    modelConfig.temperature = Number(tempRange.value);
+    tempValue.textContent = modelConfig.temperature.toFixed(2);
+    modelTempLabel.textContent = modelConfig.temperature.toFixed(2);
+    persistModel();
+  });
+
+  /* ==============================================================
+     Composer modes
+     ============================================================== */
+
+  const MODES = {
+    guided: {
+      placeholder: 'Describe the beat you want next. The prewriter will distil context and ask a few questions before writing.',
+      hint: 'Guided generation · clarifying questions come before the prose.'
+    },
+    prose: {
+      placeholder: 'Write the next passage directly, or give a one-line direction and let the prose run.',
+      hint: 'Direct prose · writes straight into the manuscript.'
+    }
+  };
+
+  const modeTabs = Array.from(document.querySelectorAll('.tab[data-mode]'));
+  const promptInput = document.getElementById('promptInput');
+  const modeHint = document.getElementById('modeHint');
+  const promptPanel = document.getElementById('promptPanel');
+  let currentMode = 'guided';
+
+  function setMode(mode) {
+    currentMode = mode;
+    modeTabs.forEach((tab) => {
+      tab.setAttribute('aria-selected', String(tab.dataset.mode === mode));
+    });
+    const config = MODES[mode];
+    promptInput.placeholder = config.placeholder;
+    modeHint.textContent = config.hint;
+    promptPanel.setAttribute('aria-labelledby', mode === 'guided' ? 'tabGuided' : 'tabProse');
+  }
+
+  modeTabs.forEach((tab) => {
+    tab.addEventListener('click', () => setMode(tab.dataset.mode));
+  });
+
+  document.querySelector('.composer .tabs-bar').addEventListener('keydown', (event) => {
+    if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+    const index = modeTabs.findIndex((tab) => tab.getAttribute('aria-selected') === 'true');
+    const next = event.key === 'ArrowRight'
+      ? (index + 1) % modeTabs.length
+      : (index - 1 + modeTabs.length) % modeTabs.length;
+    modeTabs[next].focus();
+    setMode(modeTabs[next].dataset.mode);
+    event.preventDefault();
+  });
+
+  /* ==============================================================
+     Generation — OpenAI-compatible chat completions, streamed
+     ============================================================== */
+
+  const statusEl = document.getElementById('composerStatus');
+  const statusTitle = document.getElementById('statusTitle');
+  const statusDesc = document.getElementById('statusDesc');
+  const generateBtn = document.getElementById('generateBtn');
+  const generateLabel = document.getElementById('generateLabel');
+  const previewBtn = document.getElementById('previewBtn');
+  const DOTS = '<span class="wisp-dots"><i></i><i></i><i></i></span>';
+
+  let statusTimer = null;
+  let generation = null; // { controller, kind, block, text, guided }
+
+  function autoGrow() {
+    promptInput.style.height = 'auto';
+    promptInput.style.height = Math.min(promptInput.scrollHeight, 200) + 'px';
+  }
+
+  promptInput.addEventListener('input', autoGrow);
+
+  function endpointUrl(base) {
+    let url = (base || '').trim().replace(/\/+$/, '');
+    if (!url) return '';
+    if (/\/chat\/completions$/.test(url)) return url;
+    return url + '/chat/completions';
+  }
+
+  // Antislop — the words the reader refuses to see, and the matcher used
+  // both while streaming and on the finished text.
+  function bannedWordsList() {
+    return (readerSettings.bannedWords || []).map((w) => w.trim()).filter(Boolean);
+  }
+
+  function escapeRegExp(s) {
+    return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
+
+  function findBannedWord(text) {
+    for (const word of bannedWordsList()) {
+      try {
+        if (new RegExp('\\b' + escapeRegExp(word) + '\\b', 'i').test(text)) return word;
+      } catch (_) { /* never match on a bad pattern */ }
+    }
+    return null;
+  }
+
+  // Assemble the writing prompt: memory + lorebook entries whose keys are
+  // live in the prose + the most recent paragraphs, plus the direction.
+  function buildMessages(direction) {
+    const story = activeStory();
+    const timeline = currentTimeline(story);
+    const allProse = timeline.paragraphs.join('\n\n');
+    const recent = timeline.paragraphs.slice(-8).join('\n\n');
+    const activeLore = (story.lorebook || []).filter((entry) => loreEntryActive(entry, allProse));
+
+    let system =
+      'You are the ghostwriter of an ongoing story. Continue it in the same voice, tense and register as the existing prose. ' +
+      'Write vivid, grounded prose. Return ONLY the story text — no headings, no commentary, no wrapping quotes. ' +
+      'Write one to three paragraphs.';
+    if (currentMode === 'guided') {
+      system += ' If the given direction is too vague to continue well, reply ONLY with up to three short clarifying questions instead of prose.';
+    }
+    if (story.memory && story.memory.trim()) {
+      system += '\n\nPersistent memory (always applies):\n' + story.memory.trim();
+    }
+    if (activeLore.length) {
+      system += '\n\nLorebook entries currently in play (weave them in when relevant):\n' +
+        activeLore.map((entry) => '- [' + loreKeysOf(entry).join(', ') + '] ' + entry.entry).join('\n');
+    }
+    const banned = bannedWordsList();
+    if (banned.length) {
+      system += '\n\nHard-banned words — never write any of these words, in any form or inflection. Rephrase around them: ' + banned.join(', ') + '.';
+    }
+
+    const user = (recent ? 'The story so far (latest paragraphs):\n\n' + recent + '\n\n' : '') +
+      'Direction for the next passage: ' + direction;
+
+    return [
+      { role: 'system', content: system },
+      { role: 'user', content: user }
+    ];
+  }
+
+  // Streamed chat completions — parses `data:` SSE lines and hands the
+  // accumulated text to onDelta as it grows.
+  async function streamCompletion(messages, controller, onDelta) {
+    const headers = { 'Content-Type': 'application/json' };
+    if (modelConfig.apiKey) headers.Authorization = 'Bearer ' + modelConfig.apiKey;
+
+    const res = await fetch(endpointUrl(modelConfig.apiUrl), {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        model: modelConfig.model,
+        messages,
+        temperature: modelConfig.temperature,
+        stream: true
+      }),
+      signal: controller.signal
+    });
+
+    if (!res.ok) {
+      let message = 'HTTP ' + res.status;
+      try {
+        const body = await res.json();
+        if (body.error && body.error.message) message = body.error.message;
+      } catch (_) { /* keep status code */ }
+      throw new Error(message);
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let text = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      let newlineAt;
+      while ((newlineAt = buffer.indexOf('\n')) >= 0) {
+        const line = buffer.slice(0, newlineAt).trim();
+        buffer = buffer.slice(newlineAt + 1);
+        if (!line.startsWith('data:')) continue;
+        const payload = line.slice(5).trim();
+        if (payload === '[DONE]') return text;
+        try {
+          const json = JSON.parse(payload);
+          const delta = json.choices && json.choices[0] && json.choices[0].delta && json.choices[0].delta.content;
+          if (delta) {
+            text += delta;
+            onDelta(text);
+          }
+        } catch (_) { /* partial or non-JSON line — skip */ }
+      }
+    }
+    return text;
+  }
+
+  // Render the accumulating text as prose paragraphs, following the
+  // reader only while they stay near the bottom.
+  function renderStream(text, block) {
+    const parts = text.split(/\n{2,}/).map((s) => s.trim()).filter(Boolean);
+    const frag = document.createDocumentFragment();
+    parts.forEach((part) => {
+      const p = document.createElement('p');
+      appendDialogueAware(p, part);
+      frag.appendChild(p);
+    });
+    block.replaceChildren(frag);
+
+    const distance = proseStage.scrollHeight - proseStage.scrollTop - proseStage.clientHeight;
+    if (distance < 160) proseStage.scrollTop = proseStage.scrollHeight;
+  }
+
+  function setGenerating(on) {
+    generateLabel.textContent = on ? 'Stop' : 'Generate';
+    generateBtn.classList.toggle('stopping', on);
+    previewBtn.disabled = on;
+  }
+
+  function abortGeneration() {
+    if (!generation) return;
+    const current = generation;
+    generation = null;
+    current.controller.abort();
+    if (current.block && current.block.parentNode) current.block.remove();
+    statusEl.hidden = true;
+    setGenerating(false);
+  }
+
+  function commitProse(text) {
+    const story = activeStory();
+    if (!story) return;
+    const timeline = currentTimeline(story);
+    text.split(/\n{2,}/).map((s) => s.trim()).filter(Boolean).forEach((p) => timeline.paragraphs.push(p));
+    persistLibrary();
+    renderProse();
+    refreshSidePanel();
+    proseStage.scrollTop = proseStage.scrollHeight;
+    // The direction was consumed — clear the composer for the next beat.
+    promptInput.value = '';
+    autoGrow();
+  }
+
+  // A short, question-shaped reply in guided mode is treated as the
+  // prewriter asking for detail rather than as story prose.
+  function looksLikeQuestions(text, guided) {
+    const words = text.trim().split(/\s+/).length;
+    return guided && text.includes('?') && words <= 60 && text.trim().split(/\n+/).length <= 3;
+  }
+
+  function showPreviewActions(block, clean) {
+    const row = document.createElement('div');
+    row.className = 'preview-actions';
+    const keep = document.createElement('button');
+    keep.type = 'button';
+    keep.className = 'btn sm';
+    keep.textContent = 'Keep';
+    const drop = document.createElement('button');
+    drop.type = 'button';
+    drop.className = 'btn ghost sm';
+    drop.textContent = 'Discard';
+    keep.addEventListener('click', () => {
+      row.remove();
+      block.remove();
+      statusEl.hidden = true;
+      commitProse(clean);
+      playCue('success');
+      showToast('Preview written into the story.');
+    });
+    drop.addEventListener('click', () => {
+      row.remove();
+      block.remove();
+      statusEl.hidden = true;
+      playCue('droplet');
+      showToast('Preview discarded.');
+    });
+    row.append(keep, drop);
+    statusDesc.after(row);
+  }
+
+  function finishGeneration(text, stopped) {
+    const state = generation;
+    generation = null;
+    setGenerating(false);
+
+    const clean = (text || '').trim();
+    if (!clean) {
+      if (state.block) state.block.remove();
+      statusEl.hidden = true;
+      if (stopped) showToast('Stopped before any text arrived.');
+      else { showToast('The model returned nothing.'); playCue('error'); }
+      return;
+    }
+
+    if (looksLikeQuestions(clean, state.guided)) {
+      if (state.block) state.block.remove();
+      statusTitle.textContent = 'Clarifying questions';
+      statusDesc.textContent = clean;
+      playCue('tick');
+      return;
+    }
+
+    if (state.kind === 'preview') {
+      state.block.classList.remove('streaming');
+      statusTitle.textContent = stopped ? 'Preview stopped' : 'Preview ready';
+      statusDesc.textContent = 'Keep it to write the passage into the story, or discard it.';
+      showPreviewActions(state.block, clean);
+      playCue('success');
+      return;
+    }
+
+    if (state.block) state.block.remove();
+    commitProse(clean);
+    statusEl.hidden = true;
+    showToast(stopped ? 'Stopped — the partial passage was saved.' : 'Passage written into the story.');
+    playCue('success');
+  }
+
+  const MAX_REROLLS = 5;
+
+  async function runGeneration(kind) {
+    // While a generation runs, the Generate button acts as Stop.
+    if (generation) { generation.controller.abort(); return; }
+
+    if (proseEditing) {
+      showToast('Finish editing the prose first.');
+      playCue('error');
+      return;
+    }
+
+    const direction = promptInput.value.trim();
+    if (!direction) {
+      showToast('Write a direction first.');
+      playCue('error');
+      promptInput.focus();
+      return;
+    }
+
+    if (!modelConfig.apiUrl || !modelConfig.model) {
+      showToast('Set the API URL and model in the model settings first.');
+      playCue('error');
+      openPopover();
+      return;
+    }
+
+    hideEditChip();
+    statusEl.querySelectorAll('.preview-actions').forEach((node) => node.remove());
+    statusEl.hidden = false;
+    statusTitle.innerHTML = 'Composing' + DOTS;
+    statusDesc.textContent = currentMode === 'guided'
+      ? 'Distilling memory, lore and recent prose into a writing brief.'
+      : 'Reading memory, lore and the recent passage.';
+
+    playCue('bloom');
+
+    let attempt = 0;
+    let slopWord = null;
+
+    while (true) {
+      attempt++;
+      if (slopWord) {
+        statusTitle.innerHTML = 'Slop caught' + DOTS;
+        statusDesc.textContent = '"' + slopWord + '" slipped in — rewriting (' + attempt + ' of ' + (MAX_REROLLS + 1) + ').';
+        playCue('error');
+      }
+      slopWord = null;
+
+      const block = document.createElement('div');
+      block.className = 'stream-block streaming' + (kind === 'preview' ? ' preview' : '');
+      proseContent.appendChild(block);
+      proseStage.scrollTop = proseStage.scrollHeight;
+
+      const controller = new AbortController();
+      generation = { controller, kind, block, text: '', guided: currentMode === 'guided' };
+      setGenerating(true);
+
+      try {
+        const messages = buildMessages(direction);
+        const text = await streamCompletion(messages, controller, (accumulated) => {
+          if (!generation) return;
+          generation.text = accumulated;
+          renderStream(accumulated, block);
+          const desc = statusDesc.textContent;
+          if (desc.indexOf('Streaming') !== 0 && desc.indexOf('rewriting') === -1) {
+            statusTitle.innerHTML = 'Writing' + DOTS;
+            statusDesc.textContent = 'Streaming from ' + (modelConfig.model || 'the model') + ' — Stop or Escape ends it.';
+          }
+          const hit = findBannedWord(accumulated);
+          if (hit) { slopWord = hit; controller.abort(); }
+        });
+
+        const finalHit = findBannedWord(text);
+        if (finalHit && attempt <= MAX_REROLLS) {
+          slopWord = finalHit;
+          block.remove();
+          generation = null;
+          continue;
+        }
+        finishGeneration(text, false);
+        if (finalHit) showToast('Reroll limit reached — a banned word remains.');
+        return;
+      } catch (err) {
+        if (err && err.name === 'AbortError') {
+          if (slopWord && attempt <= MAX_REROLLS) {
+            // Antislop reroll — throw the passage back and rewrite it.
+            block.remove();
+            generation = null;
+            continue;
+          }
+          if (!generation) return; // aborted by a story/timeline switch — nothing to finish
+          finishGeneration(generation.text, true);
+          return;
+        }
+        if (generation) { generation.block.remove(); generation = null; }
+        setGenerating(false);
+        statusEl.hidden = true;
+        block.remove();
+        showToast('Generation failed — ' + (err && err.message ? err.message : 'request error'));
+        playCue('error');
+        return;
+      }
+    }
+  }
+
+  generateBtn.addEventListener('click', () => runGeneration('save'));
+  previewBtn.addEventListener('click', () => runGeneration('preview'));
+
+  promptInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+      event.preventDefault();
+      runGeneration('save');
+    }
+  });
+
+  /* ==============================================================
+     Surface cues — observed insertions and disclosures
+     ============================================================== */
+
+  function collectSoundMatches(node, selector, matches) {
+    if (!(node instanceof Element)) return;
+    if (node.matches(selector)) matches.add(node);
+    node.querySelectorAll(selector).forEach((element) => matches.add(element));
+  }
+
+  const soundObserver = new MutationObserver((records) => {
+    const openedSurfaces = new Set();
+    const closedSurfaces = new Set();
+    let disclosureCue = null;
+
+    for (const record of records) {
+      if (record.type === 'childList') {
+        record.addedNodes.forEach((node) => collectSoundMatches(node, '[data-cuelume-surface]', openedSurfaces));
+        record.removedNodes.forEach((node) => collectSoundMatches(node, '[data-cuelume-surface]', closedSurfaces));
+        continue;
+      }
+      if (record.type === 'attributes'
+        && record.target instanceof Element
+        && record.target.matches('[data-cuelume-disclosure]')) {
+        disclosureCue = record.target.getAttribute('aria-expanded') === 'true' ? 'bloom' : 'droplet';
+      }
+    }
+
+    const openedSurface = openedSurfaces.values().next().value;
+    const closedSurface = Array.from(closedSurfaces)
+      .find((surface) => surface.getAttribute('data-cuelume-close') !== 'none');
+
+    if (openedSurface) {
+      playCue(openedSurface.getAttribute('data-cuelume-surface') || 'bloom');
+    } else if (closedSurface) {
+      playCue(closedSurface.getAttribute('data-cuelume-close') || 'droplet');
+    } else if (disclosureCue) {
+      playCue(disclosureCue);
+    }
+  });
+
+  soundObserver.observe(document.body, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ['aria-expanded']
+  });
+
+  /* ==============================================================
+     Boot
+     ============================================================== */
+
+  renderStories();
+  renderCharacters();
+  setLibraryTab('stories');
+</script>
+</body>
+</html>
