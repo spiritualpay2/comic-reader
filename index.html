@@ -2100,6 +2100,25 @@
             .comic-card, .comic-card:hover, .library-search-button { transition:none !important; }
         }
 </style>
+
+<style id="interaction-feedback-enhancements">
+    .comic-favorite { overflow: visible; isolation: isolate; }
+    .favorite-particle-layer {
+        position: absolute; inset: 0; pointer-events: none; overflow: visible;
+        z-index: 8;
+    }
+    .favorite-particle {
+        position: absolute; left: 50%; top: 50%; width: 4px; height: 4px;
+        border-radius: 50%; background: var(--particle-color, #e8c866);
+        box-shadow: 0 0 7px currentColor; opacity: 1; pointer-events: none;
+        will-change: transform, opacity;
+    }
+    .comic-favorite.active { color: #e8c866; }
+    @media (prefers-reduced-motion: reduce) {
+        .favorite-particle { display: none; }
+    }
+</style>
+
 </head>
 <body>
 
@@ -2912,6 +2931,8 @@
                     if (!currentComic) return;
 
                     const nextFavorite = !currentComic.favorite;
+                    burstFavoriteParticles(favoriteButton, nextFavorite);
+                    playUISound(nextFavorite ? 'favorite' : 'unfavorite');
                     try {
                         await updateComicFavorite(currentComic.id, nextFavorite);
                         currentComic.favorite = nextFavorite;
@@ -3015,9 +3036,23 @@
             }
 
             function updateLibraryCard(card, comic) {
+                const previousFavorite = card.dataset.favoriteState;
+                const nextFavorite = String(!!comic.favorite);
                 card._comic = comic;
                 card.title = 'Open ' + comic.name;
                 card.classList.toggle('is-favorite', !!comic.favorite);
+                if (previousFavorite !== undefined && previousFavorite !== nextFavorite) {
+                    // Cancel any in-flight transition so rapid toggles remain responsive.
+                    if (card._favoriteAnimation) card._favoriteAnimation.cancel();
+                    if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+                        card._favoriteAnimation = card.animate([
+                            { opacity: 1, transform: 'translateY(0) scale(1)' , offset: 0 },
+                            { opacity: 0.12, transform: 'translateY(4px) scale(.99)', offset: 0.42 },
+                            { opacity: 1, transform: 'translateY(0) scale(1)', offset: 1 }
+                        ], { duration: 210, easing: 'cubic-bezier(.2,.8,.2,1)' });
+                    }
+                }
+                card.dataset.favoriteState = nextFavorite;
 
                 const img = card.querySelector('.comic-cover img');
                 if (img) {
@@ -3048,7 +3083,16 @@
                 const favoriteButton = card.querySelector('.comic-favorite');
                 if (favoriteButton) {
                     favoriteButton.classList.toggle('active', !!comic.favorite);
-                    favoriteButton.textContent = comic.favorite ? '★' : '☆';
+                    // Update only the star's text node. Setting textContent here would
+                    // remove the particle layer appended by burstFavoriteParticles().
+                    const star = comic.favorite ? '★' : '☆';
+                    let starText = Array.from(favoriteButton.childNodes).find(node => node.nodeType === Node.TEXT_NODE);
+                    if (!starText) {
+                        starText = document.createTextNode(star);
+                        favoriteButton.insertBefore(starText, favoriteButton.firstChild);
+                    } else {
+                        starText.nodeValue = star;
+                    }
                     favoriteButton.title = comic.favorite ? 'Remove from favorites' : 'Add to favorites';
                     favoriteButton.setAttribute('aria-label', favoriteButton.title);
                     favoriteButton.setAttribute('aria-pressed', String(!!comic.favorite));
@@ -3163,8 +3207,8 @@
                     updateArrows();
                     updatePageInfo();
                     buildThumbnails();
-                    bottomBar.classList.remove('collapsed');
-                    thumbsVisible = true;
+                    bottomBar.classList.add('collapsed');
+                    thumbsVisible = false;
                     toggleThumbs.textContent = '▦';
                 } catch (error) {
                     console.error(error);
@@ -3348,6 +3392,7 @@
                 }
                 toast.textContent = message;
                 toast.className = 'toast ' + type;
+                if (type === 'success' && message !== 'Added to favorites' && message !== 'Removed from favorites') playUISound('success');
                 void toast.offsetWidth;
                 toast.classList.add('show');
                 toastTimeout = setTimeout(() => {
@@ -3357,6 +3402,7 @@
             }
 
             function showError(message) {
+                playUISound('error');
                 showToast(message, 'error');
             }
 
@@ -5046,6 +5092,90 @@
                 initLibrary();
             })();
             console.log('Simple Comic Reader loaded. Your library is stored locally in this browser.');
+
+
+            // ─── Lightweight interaction sound design ───
+            // Sounds are synthesized locally with Web Audio, so no external audio files
+            // are needed. Audio starts after the browser's first user gesture.
+            let uiAudioContext = null;
+            let lastUISoundAt = 0;
+            function playUISound(kind = 'click') {
+                try {
+                    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                    if (!AudioContextClass) return;
+                    if (!uiAudioContext) uiAudioContext = new AudioContextClass();
+                    if (uiAudioContext.state === 'suspended') uiAudioContext.resume();
+                    const now = uiAudioContext.currentTime;
+                    const presets = {
+                        click:      [620, 0.035, 'sine', 0.018],
+                        open:       [520, 0.075, 'sine', 0.026],
+                        favorite:   [880, 0.095, 'triangle', 0.035],
+                        unfavorite: [520, 0.075, 'triangle', 0.026],
+                        success:    [740, 0.10, 'sine', 0.022],
+                        backup:     [430, 0.13, 'triangle', 0.025],
+                        error:      [190, 0.16, 'sawtooth', 0.025]
+                    };
+                    const [frequency, duration, wave, volume] = presets[kind] || presets.click;
+                    const oscillator = uiAudioContext.createOscillator();
+                    const gain = uiAudioContext.createGain();
+                    oscillator.type = wave;
+                    oscillator.frequency.setValueAtTime(frequency, now);
+                    if (kind === 'success' || kind === 'favorite') {
+                        oscillator.frequency.exponentialRampToValueAtTime(frequency * 1.28, now + duration);
+                    } else if (kind === 'error') {
+                        oscillator.frequency.exponentialRampToValueAtTime(frequency * .72, now + duration);
+                    }
+                    gain.gain.setValueAtTime(volume, now);
+                    gain.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+                    oscillator.connect(gain);
+                    gain.connect(uiAudioContext.destination);
+                    oscillator.start(now);
+                    oscillator.stop(now + duration + .01);
+                } catch (_) { /* Audio is optional and must never interrupt the reader. */ }
+            }
+
+            // A single delegated listener covers dynamically-created controls too.
+            // Ignore favorite controls because their own handler chooses the correct cue.
+            document.addEventListener('click', event => {
+                const target = event.target.closest('button, [role="button"], .comic-card, .drop-zone');
+                if (!target || target.disabled || target.classList.contains('comic-favorite')) return;
+                if (target.id === 'backupBtn' || target.id === 'restoreBtn' ||
+                    target.id === 'cancelBackupBtn' || target.id === 'transferDownloadLink') {
+                    playUISound('backup');
+                } else if (target.classList.contains('comic-card')) {
+                    playUISound('open');
+                } else {
+                    playUISound('click');
+                }
+            }, true);
+
+            function burstFavoriteParticles(button, becomingFavorite) {
+                if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+                const layer = document.createElement('span');
+                layer.className = 'favorite-particle-layer';
+                layer.setAttribute('aria-hidden', 'true');
+                button.appendChild(layer);
+                const particleColor = becomingFavorite ? '#e8c866' : '#aeb7b0';
+                const count = 10;
+                for (let i = 0; i < count; i++) {
+                    const particle = document.createElement('i');
+                    particle.className = 'favorite-particle';
+                    particle.style.setProperty('--particle-color', particleColor);
+                    particle.style.background = particleColor;
+                    layer.appendChild(particle);
+                    const angle = (Math.PI * 2 * i / count) + (Math.random() * .22);
+                    const distance = 17 + Math.random() * 12;
+                    const dx = Math.cos(angle) * distance;
+                    const dy = Math.sin(angle) * distance;
+                    particle.animate([
+                        { transform: 'translate(-50%, -50%) scale(.65)', opacity: 1 },
+                        { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(0)`, opacity: 0 }
+                    ], { duration: 260 + Math.random() * 65, easing: 'cubic-bezier(.12,.72,.22,1)', fill: 'forwards' });
+                }
+                // Replace old bursts rather than accumulating nodes during rapid toggles.
+                while (button.children.length > 1) button.firstElementChild.remove();
+                setTimeout(() => layer.remove(), 360);
+            }
 
         })();
     </script>
