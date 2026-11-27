@@ -2369,6 +2369,15 @@
             const libraryCount = document.getElementById('libraryCount');
             const librarySearch = document.getElementById('librarySearch');
             const librarySort = document.getElementById('librarySort');
+            const DEFAULT_SORT_STORAGE_KEY = 'comic-reader-default-sort';
+            try {
+                const savedDefaultSort = localStorage.getItem(DEFAULT_SORT_STORAGE_KEY);
+                if (savedDefaultSort && Array.from(librarySort.options).some(option => option.value === savedDefaultSort)) {
+                    librarySort.value = savedDefaultSort;
+                }
+            } catch (error) {
+                console.warn('Could not load the saved default sort:', error);
+            }
             const libraryFilter = document.getElementById('libraryFilter');
             const addComicBtn = document.getElementById('addComicBtn');
             const emptyAddComicBtn = document.getElementById('emptyAddComicBtn');
@@ -5348,6 +5357,7 @@
     </style>
     <script id="performance-ui-refinements-script">
         (() => {
+            const DEFAULT_SORT_STORAGE_KEY = 'comic-reader-default-sort';
             // Keep the animated background lightweight and stop its loop when the page is hidden.
             const canvas = document.getElementById('starfieldCanvas');
             if (canvas) {
@@ -5421,9 +5431,37 @@
                     const item = document.createElement('button');
                     item.type = 'button';
                     item.className = 'library-custom-option';
-                    item.textContent = option.textContent;
+                    const optionLabel = document.createElement('span');
+                    optionLabel.className = 'library-custom-option-label';
+                    optionLabel.textContent = option.textContent;
+                    item.appendChild(optionLabel);
                     item.setAttribute('role', 'option');
                     item.dataset.value = option.value;
+
+                    if (select.id === 'librarySort') {
+                        const star = document.createElement('button');
+                        star.type = 'button';
+                        star.className = 'library-sort-default-star';
+                        star.setAttribute('aria-label', 'Set ' + option.textContent + ' as the default sort');
+                        star.title = 'Make this the default sort';
+                        star.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.75 5.57 6.15.9-4.45 4.34 1.05 6.13L12 17.05l-5.5 2.89 1.05-6.13L3.1 9.47l6.15-.9L12 3Z"/></svg>';
+                        star.addEventListener('click', event => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            try {
+                                localStorage.setItem(DEFAULT_SORT_STORAGE_KEY, option.value);
+                            } catch (error) {
+                                console.warn('Could not save the default sort:', error);
+                            }
+                            select.value = option.value;
+                            select.dispatchEvent(new Event('change', {bubbles:true}));
+                            sync();
+                            close();
+                            trigger.focus();
+                        });
+                        item.appendChild(star);
+                    }
+
                     item.addEventListener('click', () => {
                         select.value = option.value;
                         select.dispatchEvent(new Event('change', {bubbles:true}));
@@ -5448,7 +5486,23 @@
                 function sync() {
                     const current = Array.from(select.options).find(o => o.value === select.value);
                     label.textContent = current ? current.textContent : 'Choose…';
-                    buttons.forEach(button => button.setAttribute('aria-selected', String(button.dataset.value === select.value)));
+                    buttons.forEach(button => {
+                        button.setAttribute('aria-selected', String(button.dataset.value === select.value));
+                        if (select.id === 'librarySort') {
+                            const star = button.querySelector('.library-sort-default-star');
+                            let defaultSort = null;
+                            try { defaultSort = localStorage.getItem(DEFAULT_SORT_STORAGE_KEY); } catch (_) {}
+                            const isDefault = defaultSort === button.dataset.value;
+                            if (star) {
+                                star.classList.toggle('is-default', isDefault);
+                                star.setAttribute('aria-pressed', String(isDefault));
+                                star.setAttribute('aria-label', (isDefault ? 'Default sort: ' : 'Set ') +
+                                    button.querySelector('.library-custom-option-label').textContent +
+                                    (isDefault ? '' : ' as the default sort'));
+                                star.title = isDefault ? 'Current default sort' : 'Make this the default sort';
+                            }
+                        }
+                    });
                 }
                 function close() {
                     custom.classList.remove('open');
@@ -5482,6 +5536,142 @@
             });
         })();
     </script>
+
+
+<style id="saved-sort-and-search-polish">
+    /* The star is independent of selecting a sort option. */
+    .library-custom-option {
+        justify-content: flex-start;
+    }
+    .library-custom-option-label {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+    .library-custom-option[aria-selected="true"]::after {
+        content: "✓";
+        margin-left: auto;
+        font-size: 13px;
+        order: 3;
+    }
+    .library-sort-default-star {
+        flex: 0 0 28px;
+        display: grid;
+        place-items: center;
+        width: 28px;
+        height: 28px;
+        margin: -4px -3px -4px 2px;
+        padding: 0;
+        border: 1px solid transparent;
+        border-radius: 8px;
+        background: transparent;
+        color: rgba(220, 220, 220, .48);
+        cursor: pointer;
+        transition: color .18s ease, background .18s ease, border-color .18s ease, transform .18s ease;
+        order: 2;
+    }
+    .library-sort-default-star svg {
+        width: 16px;
+        height: 16px;
+        fill: none;
+        stroke: currentColor;
+        stroke-width: 1.7;
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        transition: fill .18s ease, filter .18s ease;
+    }
+    .library-sort-default-star:hover {
+        color: #e8c866;
+        background: rgba(232, 200, 102, .10);
+        border-color: rgba(232, 200, 102, .22);
+        transform: scale(1.08);
+    }
+    .library-sort-default-star.is-default {
+        color: #e8c866;
+        background: rgba(232, 200, 102, .12);
+        border-color: rgba(232, 200, 102, .25);
+    }
+    .library-sort-default-star.is-default svg {
+        fill: currentColor;
+        filter: drop-shadow(0 0 5px rgba(232, 200, 102, .42));
+    }
+    .library-sort-default-star:focus-visible {
+        outline: 2px solid rgba(232, 200, 102, .75);
+        outline-offset: 2px;
+    }
+
+    /* One focus treatment: the input's own border, with a moving highlight riding it. */
+    @property --search-glow-angle {
+        syntax: "<angle>";
+        inherits: false;
+        initial-value: 0deg;
+    }
+    .library-search-wrap {
+        isolation: isolate;
+        border-radius: 999px;
+    }
+    .library-search-wrap::before {
+        content: "";
+        position: absolute;
+        z-index: 3;
+        inset: -1px;
+        padding: 1.5px;
+        border-radius: inherit;
+        pointer-events: none;
+        opacity: 0;
+        background: conic-gradient(
+            from var(--search-glow-angle),
+            transparent 0deg 98deg,
+            rgba(46, 204, 113, .18) 120deg,
+            rgba(151, 255, 190, .78) 142deg,
+            #f0fff5 154deg,
+            rgba(151, 255, 190, .72) 165deg,
+            transparent 180deg 278deg,
+            rgba(46, 204, 113, .18) 300deg,
+            rgba(151, 255, 190, .78) 322deg,
+            #f0fff5 334deg,
+            rgba(151, 255, 190, .72) 345deg,
+            transparent 360deg
+        );
+        -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+        -webkit-mask-composite: xor;
+        mask-composite: exclude;
+        transition: opacity .2s ease;
+    }
+    .library-search-wrap:focus-within::before {
+        opacity: 1;
+        animation: searchBorderShimmer 3.2s linear infinite;
+    }
+    .library-search {
+        position: relative;
+        z-index: 1;
+        border-color: rgba(46, 204, 113, .35);
+        outline: none !important;
+        box-shadow: none;
+        background-clip: padding-box;
+    }
+    .library-search:focus,
+    .library-search:focus-visible {
+        border-color: #2ecc71;
+        outline: none !important;
+        box-shadow: none !important;
+        background: rgba(255, 255, 255, .05);
+    }
+    .library-search:focus-visible {
+        outline-offset: 0;
+    }
+    @keyframes searchBorderShimmer {
+        to { --search-glow-angle: 360deg; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+        .library-search-wrap:focus-within::before {
+            animation: none;
+            opacity: .7;
+        }
+        .library-sort-default-star {
+            transition: none;
+        }
+    }
+</style>
 
 </body>
 </html>
